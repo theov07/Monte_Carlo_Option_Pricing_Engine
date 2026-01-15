@@ -51,7 +51,7 @@ def main():
     end = time.time()
     print("temps d'exécution priceur récursif:", end - start, "secondes")
 
-    tree.plot_tree()
+    #tree.plot_tree()
     # Greeks
 
     print("Delta =", mod.delta(option))
