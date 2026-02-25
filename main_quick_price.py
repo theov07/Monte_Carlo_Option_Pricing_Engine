@@ -5,6 +5,7 @@ Modifier le bloc PARAMÈTRES ci-dessous, puis lancer :
     python main_quick_price.py
 """
 
+import math
 from datetime import date
 from src.market import Market
 from src.option_trade import OptionTrade
@@ -72,6 +73,11 @@ else:
 
 price = r['price']
 se    = r['std_error']
+N     = len(r['payoffs'])
+sigma_payoffs = se * math.sqrt(N)   # écart-type brut des payoffs actualisés
+
 print(f"  Monte Carlo ({MC_PATHS:,} paths)  :  {price:>10.4f}  ±{1.96*se:.4f}  (IC 95 %)")
+print(f"  σ payoffs (brut)       :  {sigma_payoffs:>10.4f}  = SE × √N = {se:.4f} × √{N:,}")
+print(f"  Variance payoffs       :  {sigma_payoffs**2:>10.4f}  = σ²")
 print("═" * 52)
 print()
