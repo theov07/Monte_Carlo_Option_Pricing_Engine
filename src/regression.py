@@ -39,7 +39,7 @@ class Regression:
     La base affecte uniquement le conditionnement numÃ©rique du systÃ¨me.
     """
 
-    def __init__(self, degree: int = 3,
+    def __init__(self, degree: int = 1,
                  basis: BasisType = BasisType.POWER,
                  residual_threshold: float = 0.0,
                  normalize: bool = True):
