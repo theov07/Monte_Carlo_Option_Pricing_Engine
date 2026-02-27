@@ -15,8 +15,8 @@ from scipy.stats import norm
 from src.market import Market
 from src.option_trade import OptionTrade
 from src.monte_carlo_model import MonteCarloModel
-from src.tree import Tree
-from src.trinomial_model import TrinomialModel
+from src_trinomial.tree import Tree
+from src_trinomial.trinomial_model import TrinomialModel
 from PriceurBS import Call, Put
 
 

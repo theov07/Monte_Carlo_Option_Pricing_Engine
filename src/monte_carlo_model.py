@@ -11,7 +11,7 @@ class MonteCarloModel:
     def __init__(self, num_simulations: int, market: Market, option: OptionTrade, 
                  pricing_date: date, seed=None):
         """
-        Monte Carlo Model for European Option Pricing
+        Monte Carlo Model for European and American Option Pricing
         
         Parameters:
         -----------
