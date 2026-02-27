@@ -3,19 +3,6 @@ ConvergenceStudy — Étude de la convergence Monte-Carlo.
 
 Reproduit l'analyse "Step 4" du cours :
     std_error(MC) ≈ σ_payoff / √N  →  droite log/log de pente -½
-
-Usage typique ::
-
-    from src.convergence import ConvergenceStudy
-    from src.black_scholes import BlackScholes
-
-    study = ConvergenceStudy(mc_model, method='european')
-    study.run(n_list=[1_000, 5_000, 10_000, 50_000, 100_000],
-              n_repeat=10, seed_start=0)
-
-    ref = BlackScholes(market, option, pricing_date).price()
-    study.print_table(reference=ref)
-    study.plot(reference=ref)
 """
 from __future__ import annotations
 

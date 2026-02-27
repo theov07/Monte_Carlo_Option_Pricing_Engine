@@ -32,7 +32,7 @@ class MonteCarloModel:
         self.pricing_date = pricing_date
         self.seed = seed
         # Pas de np.random.seed global : chaque BrownianMotion gère son propre
-        # objet Generator (default_rng) avec self.seed — reproductibilité locale.
+        # objet Generator (default_rng) avec self.seed, reproductibilité locale.
 
     # ------------------------------------------------------------------
     # Helpers privés
@@ -72,7 +72,7 @@ class MonteCarloModel:
         """Payoff vectorisé : max(S-K, 0) ou max(K-S, 0)."""
         if self.option.is_a_call():
             return np.maximum(S - self.option.strike, 0)
-        #return np.where(S <= self.option.strike, 1.0, 0.0) ligne ajoutée pour le contrôle, pour l'option one touch binaire avec exercice américain 
+        #return np.where(S <= self.option.strike, 1.0, 0.0) ligne ajoutée pour le qcm, pour l'option one touch binaire avec exercice américain 
         return np.maximum(self.option.strike - S, 0)
 
     def _num_paths(self, antithetic: bool) -> int:

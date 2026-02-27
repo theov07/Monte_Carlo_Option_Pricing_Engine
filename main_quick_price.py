@@ -1,11 +1,6 @@
 """
-main_quick_price.py, Pricing d'une option : 
-
 INPUT : PARAMÈTRES DU MARCHÉ, DE L'OPTION, ET DE LA SIMULATION MC
 OUTPUT : prix de l'option par MC (avec IC) et par BS (si européen), Greeks MC, variance empirique du prix sur N_RUNS répétitions indépendantes.
-
-Modifier le bloc PARAMÈTRES ci-dessous, puis lancer :
-    python main_quick_price.py
 """
 
 import math
@@ -64,12 +59,12 @@ if div_date:
 print(f"  Maturité : {MATURITY}  (Date d'évaluation : {PRICING_DATE})")
 print("─" * 52)
 
-# — Black-Scholes (européen uniquement)
+# Black-Scholes (pour européen uniquement)
 if EXERCISE == 'EUROPEAN':
     bs_price = BlackScholes(market, option, PRICING_DATE).price()
     print(f"  Black-Scholes          :  {bs_price:>10.4f}")
 
-# — Monte Carlo
+# Monte Carlo
 if EXERCISE == 'EUROPEAN':
     r = mc.price_european_vectorized(antithetic=MC_ANTITHETIC)
 else:
@@ -90,7 +85,7 @@ print(f"  Variance payoffs       :  {sigma_payoffs**2:>10.4f}  = σ²  (variance
 print(f"  Variance du prix (SE²) :  {se**2:>10.6f}  = σ²/N  (variance de l'estimateur)")
 print("─" * 52)
 
-# — Greeks Monte Carlo
+# Greeks Monte Carlo (méthode par différence finies)
 print(f"  Calcul des Greeks MC ({MC_PATHS:,} paths, CRN)...")
 g_calc   = MCGreeks(
     market=market,
@@ -111,7 +106,7 @@ for g in (greeks.delta, greeks.gamma, greeks.vega, greeks.theta, greeks.rho):
         print(f"  {g.name:<8}  {g.value:>10.5f}   {g.se:>10.5f}")
 print("─" * 52)
 
-# — Hedging pratique
+# Hedging 
 delta_val = greeks.delta.value
 gamma_val = greeks.gamma.value
 hedge_sign = "acheter" if delta_val < 0 else "vendre"
@@ -123,7 +118,7 @@ print(f"  Gamma ×(S₀×1%) = {gamma_val:.5f} × {UNDERLYING}×0.01 = {gamma_pc
 print(f"                 → variation du delta pour un mouvement de 1 % du sous-jacent")
 print("─" * 52)
 
-# ── Variance empirique du prix via N_RUNS répétitions indépendantes ──────────
+# VARIANCE EMPIRIQUE 
 print(f"  Calcul variance empirique sur {N_RUNS} runs...")
 prices_runs = []
 for seed in range(MC_SEED, MC_SEED + N_RUNS):

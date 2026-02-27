@@ -1,5 +1,5 @@
 """
-greeks.py — Calcul des Greeks Monte Carlo par différences finies (bump & reprice)
+Calcul des Greeks Monte Carlo par différences finies (bump & reprice)
 
 Méthode : différences finies centrées avec Common Random Numbers (CRN).
 Le même seed est utilisé pour les deux pricings d'un bump, ce qui réduit
@@ -15,21 +15,6 @@ Greeks calculés :
 SE des Greeks = propagation de l'erreur standard des priceurs élémentaires :
   SE(ΔP / 2h) = sqrt(SE_up² + SE_down²) / (2h)   (différence centrale)
   SE(Gamma)   = sqrt(SE_up² + 4·SE_0² + SE_down²) / h²
-
-Usage rapide
-------------
-from greeks import MCGreeks
-
-g = MCGreeks(
-    market=market,
-    option=option,
-    pricing_date=pricing_date,
-    num_paths=100_000,
-    antithetic=True,
-    seed=42,
-)
-results = g.all_greeks()
-g.print_greeks(results)
 """
 
 import math
