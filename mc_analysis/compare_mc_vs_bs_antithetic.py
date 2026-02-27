@@ -3,16 +3,31 @@ Compare Monte Carlo Pricing:
 - MC sans antithetic variates
 - MC avec antithetic variates
 - Black-Scholes (référence analytique)
+
+OUTPUT : plots/antithetic_variance_reduction.png
 """
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import date, timedelta
 from src.market import Market
 from src.option_trade import OptionTrade
 from src.monte_carlo_model import MonteCarloModel
-from PriceurBS import Call, Put
+from src.black_scholes import BlackScholes
+
+PLOTS_DIR = os.path.join(os.path.dirname(__file__), 'plots')
+os.makedirs(PLOTS_DIR, exist_ok=True)
+
+
+def _bs_price(S0, K, T, r, sigma, call_put='CALL'):
+    """Wrapper Black-Scholes via src."""
+    pricing_date = date(2025, 1, 15)
+    mat_date = pricing_date + timedelta(days=int(T * 365))
+    mkt = Market(underlying=S0, vol=sigma, rate=r, div_a=0.0, ex_div_date=None)
+    opt = OptionTrade(mat_date, call_put, 'EUROPEAN', K)
+    return BlackScholes(mkt, opt, pricing_date).price()
 
 
 def compare_pricing(S0=100, K=100, T=1.0, r=0.05, sigma=0.2, num_sims=10000):
@@ -49,8 +64,7 @@ def compare_pricing(S0=100, K=100, T=1.0, r=0.05, sigma=0.2, num_sims=10000):
     print("=" * 80)
     
     # Black-Scholes
-    bs_call = Call(S0, K, r, T, sigma)
-    bs_price_call = bs_call.price()
+    bs_price_call = _bs_price(S0, K, T, r, sigma, 'CALL')
     print(f"\n{'Method':<30} {'Price':>12} {'Std Error':>12} {'Error %':>12}")
     print("-" * 80)
     print(f"{'Black-Scholes (ref)':30} {bs_price_call:12.6f} {'':>12} {'':>12}")
@@ -81,8 +95,7 @@ def compare_pricing(S0=100, K=100, T=1.0, r=0.05, sigma=0.2, num_sims=10000):
     print("=" * 80)
     
     # Black-Scholes
-    bs_put = Put(S0, K, r, T, sigma)
-    bs_price_put = bs_put.price()
+    bs_price_put = _bs_price(S0, K, T, r, sigma, 'PUT')
     print(f"\n{'Method':<30} {'Price':>12} {'Std Error':>12} {'Error %':>12}")
     print("-" * 80)
     print(f"{'Black-Scholes (ref)':30} {bs_price_put:12.6f} {'':>12} {'':>12}")
@@ -144,8 +157,7 @@ def convergence_study(S0=100, K=100, T=1.0, r=0.05, sigma=0.2):
     )
     
     # Référence BS
-    bs_call = Call(S0, K, r, T, sigma)
-    bs_price = bs_call.price()
+    bs_price = _bs_price(S0, K, T, r, sigma, 'CALL')
     
     # Test avec différents nombres de simulations
     num_sims_list = [100, 500, 1000, 5000, 10000, 50000, 100000]
@@ -190,9 +202,10 @@ def convergence_study(S0=100, K=100, T=1.0, r=0.05, sigma=0.2):
     plt.legend(fontsize=11)
     plt.grid(True, alpha=0.3, which='both')
     plt.tight_layout()
-    plt.savefig('convergence_antithetic.png', dpi=150)
-    print("\n✓ Graphique sauvegardé: convergence_antithetic.png")
-    plt.show()
+    out_conv = os.path.join(PLOTS_DIR, 'antithetic_convergence.png')
+    plt.savefig(out_conv, dpi=150)
+    print(f"\n\u2713 Graphique sauvegard\u00e9: {out_conv}")
+    plt.close()
 
 
 def variance_reduction_analysis(S0=100, K=100, T=1.0, r=0.05, sigma=0.2, num_sims=10000):
@@ -251,17 +264,18 @@ def variance_reduction_analysis(S0=100, K=100, T=1.0, r=0.05, sigma=0.2, num_sim
     axes[1].grid(alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig('variance_reduction.png', dpi=150)
-    print("\n✓ Graphique sauvegardé: variance_reduction.png")
-    plt.show()
+    out_var = os.path.join(PLOTS_DIR, 'antithetic_variance_reduction.png')
+    plt.savefig(out_var, dpi=150)
+    print(f"\n\u2713 Graphique sauvegard\u00e9: {out_var}")
+    plt.close()
 
 
 if __name__ == '__main__':
     # Comparaison simple
-    results = compare_pricing(S0=100, K=0.1, T=1.0, r=0.05, sigma=0.2, num_sims=10000)
-    
+    results = compare_pricing(S0=100, K=100, T=1.0, r=0.05, sigma=0.2, num_sims=10000)
+
     # Étude de convergence
-    convergence_study(S0=100, K=0.1, T=1.0, r=0.05, sigma=0.2)
-    
+    convergence_study(S0=100, K=100, T=1.0, r=0.05, sigma=0.2)
+
     # Analyse variance
-    variance_reduction_analysis(S0=100, K=0.1, T=1.0, r=0.05, sigma=0.2, num_sims=10000)
+    variance_reduction_analysis(S0=100, K=100, T=1.0, r=0.05, sigma=0.2, num_sims=10000)

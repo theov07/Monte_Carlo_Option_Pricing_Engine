@@ -3,16 +3,23 @@ Test script for American option pricing
 - Scalar vs Vectorized Monte Carlo comparison
 - Comparison with Trinomial Tree
 - Convergence analysis
+
+OUTPUT : plots/american_options.png
 """
+import sys, os, time
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from datetime import date, timedelta
+import numpy as np
+import matplotlib.pyplot as plt
 from src.market import Market
 from src.option_trade import OptionTrade
 from src.monte_carlo_model import MonteCarloModel
-from src.tree import Tree
-from src.trinomial_model import TrinomialModel
-import time
-import numpy as np
+from src_trinomial.tree import Tree
+from src_trinomial.trinomial_model import TrinomialModel
+
+PLOTS_DIR = os.path.join(os.path.dirname(__file__), 'plots')
+os.makedirs(PLOTS_DIR, exist_ok=True)
 
 
 def test_american_scalar_vs_vectorized():
@@ -62,18 +69,19 @@ def test_american_scalar_vs_vectorized():
                     seed=42
                 )
                 
-                # Compare implementations
-                comparison = mc.compare_american_scalar_vs_vectorized(
-                    num_steps=num_steps,
-                    antithetic=True
-                )
-                
-                scalar_price = comparison['scalar']['price']
-                scalar_time = comparison['scalar']['time']
-                vector_price = comparison['vectorized']['price']
-                vector_time = comparison['vectorized']['time']
-                speedup = comparison['speedup']
-                price_diff = comparison['price_difference']
+                # Compare implementations — inline (la méthode compare a été retirée du modèle)
+                t0 = time.perf_counter()
+                r_scalar = mc.price_american_naive(num_steps=num_steps, antithetic=True)
+                scalar_time = time.perf_counter() - t0
+
+                t0 = time.perf_counter()
+                r_vector = mc.price_american_naive_vectorized(num_steps=num_steps, antithetic=True)
+                vector_time = time.perf_counter() - t0
+
+                scalar_price = r_scalar['price']
+                vector_price = r_vector['price']
+                speedup = scalar_time / vector_time if vector_time > 0 else float('inf')
+                price_diff = abs(scalar_price - vector_price)
                 
                 print(f"{num_steps:>20} | {scalar_price:>15.6f} | {scalar_time:>12.4f}s | "
                       f"{vector_price:>15.6f} | {vector_time:>12.4f}s | {speedup:>8.2f}x | "
@@ -370,6 +378,58 @@ def test_american_vs_european():
             print("✓ CALL: American ≈ European (early exercise typically not optimal without dividends)")
 
 
+def plot_am_vs_eu():
+    """
+    Graphique : prime d'exercice anticipé (AM - EU) pour Call et Put,
+    en fonction du spot S0.  Sauvegarde plots/american_options.png.
+    """
+    pricing_date  = date(2025, 9, 1)
+    maturity_date = date(2026, 3, 1)  # 6 mois
+    K, R, sigma   = 100.0, 0.05, 0.30
+    n_sims        = 15_000
+    num_steps     = 80
+
+    spots    = [80, 90, 95, 100, 105, 110, 120]
+    call_premiums = []
+    put_premiums  = []
+
+    print("\n  Calcul de la prime américaine pour différents spots...")
+    for s0 in spots:
+        mkt = Market(s0, sigma, R, 0.0, None)
+        for cp, lst in [('CALL', call_premiums), ('PUT', put_premiums)]:
+            opt_am = OptionTrade(mat=maturity_date, call_put=cp, ex='AMERICAN', k=K)
+            opt_eu = OptionTrade(mat=maturity_date, call_put=cp, ex='EUROPEAN', k=K)
+            mc_am = MonteCarloModel(n_sims, mkt, opt_am, pricing_date, seed=42)
+            mc_eu = MonteCarloModel(n_sims, mkt, opt_eu, pricing_date, seed=42)
+            pam = mc_am.price_american_longstaff_schwartz_vectorized(
+                num_steps=num_steps, antithetic=True)['price']
+            peu = mc_eu.price_european_vectorized(antithetic=True)['price']
+            lst.append(pam - peu)
+        print(f"    S0={s0}  CallPremium={call_premiums[-1]:.4f}  PutPremium={put_premiums[-1]:.4f}")
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    fig.suptitle("Prime d'exercice anticipé MC (AM \u2212 EU)\n"
+                 f"K={K}, \u03c3={sigma:.0%}, r={R:.0%}, T=6m, N={n_sims:,}",
+                 fontsize=12, fontweight='bold')
+
+    for ax, premiums, cp, color in [
+        (axes[0], call_premiums, 'CALL', 'steelblue'),
+        (axes[1], put_premiums,  'PUT',  'tomato'),
+    ]:
+        ax.bar(spots, premiums, width=4, color=color, alpha=0.8, edgecolor='white')
+        ax.axhline(0, color='gray', lw=0.8, ls='--')
+        ax.set_xlabel('Spot S₀')
+        ax.set_ylabel('Prime AM \u2212 EU')
+        ax.set_title(f'{cp} \u2014 Prime d\'exercice anticipé')
+        ax.grid(axis='y', alpha=0.3)
+
+    plt.tight_layout()
+    out = os.path.join(PLOTS_DIR, 'american_options.png')
+    plt.savefig(out, dpi=150)
+    print(f"\n\u2713 Graphique sauvegardé : {out}")
+    plt.close()
+
+
 def main():
     """Run all American option tests"""
     print("\n" * 2)
@@ -392,7 +452,10 @@ def main():
         
         # Test 5: American vs European
         test_american_vs_european()
-        
+
+        # Plot: early exercise premium
+        plot_am_vs_eu()
+
         print("\n" + "=" * 80)
         print("ALL TESTS COMPLETED SUCCESSFULLY")
         print("=" * 80 + "\n")

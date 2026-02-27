@@ -16,13 +16,18 @@ Figures générées :
 
 import sys
 import os
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
+import matplotlib
+matplotlib.use("Agg")
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from scipy import stats
 from datetime import date
+
+PLOTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "plots")
+os.makedirs(PLOTS_DIR, exist_ok=True)
 
 from src.market import Market
 from src.option_trade import OptionTrade
@@ -402,14 +407,21 @@ if __name__ == "__main__":
         ("Figure 5 — Backward value trace EU vs AM", plot_backward_value_trace),
     ]
 
-    all_figs = []
-    for title, func in figs:
+    fig_names = [
+        'mc_convergence.png',
+        'mc_brownian_distribution.png',
+        'mc_martingale.png',
+        'mc_regression_step.png',
+        'mc_backward_trace.png',
+    ]
+    for (title, func), fname in zip(figs, fig_names):
         print(f"Génération : {title}")
         f = func()
-        all_figs.append(f)
+        out = os.path.join(PLOTS_DIR, fname)
+        f.savefig(out, dpi=150, bbox_inches='tight')
+        plt.close(f)
+        print(f"  ✓ Sauvegardé : {out}")
 
     print(f"\n{'═'*64}")
-    print("  Affichage de toutes les figures...")
-    print("  (fermer les fenêtres pour terminer)")
+    print("  Toutes les figures sauvegardées dans plots/")
     print("═"*64)
-    plt.show()

@@ -161,27 +161,7 @@ class MonteCarloModel:
         price = np.mean(final_payoffs)
         std_error = np.std(final_payoffs, ddof=1) / np.sqrt(len(final_payoffs))
         return {'price': price, 'std_error': std_error, 'payoffs': final_payoffs}
-    
-    def compare_scalar_vs_vectorized(self, antithetic=True) -> dict:
-        """
-        Compare scalar vs vectorized European pricing.
-        Même seed → prix comparables. Mesure le speedup.
-        """
-        results = {}
-        for label, method in [('scalar', self.price_european),
-                               ('vectorized', self.price_european_vectorized)]:
-            t0 = time.time()
-            res = method(antithetic=antithetic)
-            results[label] = {'price': res['price'],
-                               'std_error': res['std_error'],
-                               'time': time.time() - t0}
-        return {
-            **results,
-            'price_difference': abs(results['scalar']['price'] - results['vectorized']['price']),
-            'speedup': results['scalar']['time'] / results['vectorized']['time']
-            if results['vectorized']['time'] > 0 else float('inf')
-        }
-    
+
     def price_american_naive(self, num_steps: int = 252, antithetic=True) -> dict:
         """
         Price an American option with naive scalar backward induction.
@@ -274,24 +254,6 @@ class MonteCarloModel:
         std_error = np.std(american_prices, ddof=1) / np.sqrt(len(american_prices))
         return {'price': price, 'std_error': std_error, 'num_steps': num_steps,
                 'payoffs': american_prices}
-    
-    def compare_american_naive_scalar_vs_vectorized(self, num_steps: int = 252, antithetic=True) -> dict:
-        """Benchmark scalar vs vectorized American naive pricing."""
-        results = {}
-        for label, method in [('scalar', self.price_american_naive),
-                               ('vectorized', self.price_american_naive_vectorized)]:
-            t0 = time.time()
-            res = method(num_steps=num_steps, antithetic=antithetic)
-            results[label] = {'price': res['price'],
-                               'std_error': res['std_error'],
-                               'time': time.time() - t0}
-        return {
-            **results,
-            'price_difference': abs(results['scalar']['price'] - results['vectorized']['price']),
-            'speedup': results['scalar']['time'] / results['vectorized']['time']
-            if results['vectorized']['time'] > 0 else float('inf'),
-            'num_steps': num_steps
-        }
 
     def price_american_longstaff_schwartz_vectorized(self, num_steps: int = 252,
                                                      poly_degree: int = 3,
@@ -348,32 +310,3 @@ class MonteCarloModel:
         std_error = np.std(ls_prices, ddof=1) / np.sqrt(len(ls_prices)) if len(ls_prices) > 1 else 0.0
         return {'price': price, 'std_error': std_error, 'num_steps': num_steps,
                 'poly_degree': poly_degree, 'payoffs': ls_prices}
-    
-    def compare_american_naive_vs_ls(self, num_steps: int = 252, poly_degree: int = 3,
-                                     poly_basis: BasisType = BasisType.POWER,
-                                     residual_threshold: float = 0.0,
-                                     antithetic=True) -> dict:
-        """Compare naive American pricing vs Longstaff-Schwartz."""
-        methods = [
-            ('naive', lambda: self.price_american_naive_vectorized(
-                num_steps=num_steps, antithetic=antithetic)),
-            ('longstaff_schwartz', lambda: self.price_american_longstaff_schwartz_vectorized(
-                num_steps=num_steps, poly_degree=poly_degree,
-                poly_basis=poly_basis, residual_threshold=residual_threshold,
-                antithetic=antithetic)),
-        ]
-        results = {}
-        for label, method in methods:
-            t0 = time.time()
-            res = method()
-            results[label] = {'price': res['price'],
-                               'std_error': res['std_error'],
-                               'time': time.time() - t0}
-        return {
-            **results,
-            'price_difference': abs(results['naive']['price'] - results['longstaff_schwartz']['price']),
-            'time_ratio': results['longstaff_schwartz']['time'] / results['naive']['time']
-            if results['naive']['time'] > 0 else float('inf'),
-            'num_steps': num_steps,
-            'poly_degree': poly_degree
-        }

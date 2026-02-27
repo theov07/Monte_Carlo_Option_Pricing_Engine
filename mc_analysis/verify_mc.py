@@ -16,7 +16,14 @@ Tests implémentés (dans l'ordre des notes de cours) :
 
 import sys
 import os
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+
+PLOTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "plots")
+os.makedirs(PLOTS_DIR, exist_ok=True)
 
 import numpy as np
 from scipy import stats
@@ -345,3 +352,20 @@ if _FAIL == 0:
 else:
     print(f"  — {_FAIL} test(s) en échec")
 print("═"*64)
+
+# ── Graphique bilan ─────────────────────────────────────────────────────────
+fig, ax = plt.subplots(figsize=(5, 4))
+bars = ax.bar(['Passed', 'Failed'], [_PASS, _FAIL],
+              color=['#4caf50', '#f44336'], edgecolor='white', width=0.5)
+for bar, val in zip(bars, [_PASS, _FAIL]):
+    ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.15,
+            str(val), ha='center', va='bottom', fontweight='bold', fontsize=14)
+ax.set_ylim(0, max(_PASS + _FAIL, 1) * 1.25)
+ax.set_ylabel('Nombre de tests')
+ax.set_title(f'V\u00e9rification MC — bilan: {_PASS}/{_PASS+_FAIL} tests OK')
+ax.grid(axis='y', alpha=0.3)
+plt.tight_layout()
+out = os.path.join(PLOTS_DIR, 'verify_mc_summary.png')
+plt.savefig(out, dpi=150)
+plt.close()
+print(f"\n\u2713 Graphique sauvegard\u00e9 : {out}")

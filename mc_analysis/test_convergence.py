@@ -1,11 +1,20 @@
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+
+import matplotlib
+matplotlib.use("Agg")
 from datetime import date, timedelta
 import matplotlib.pyplot as plt
-from PriceurBS import Call            # Black-Scholes pricer (T en années)
 
-from src.tree import Tree
+from src_trinomial.tree import Tree
 from src.option_trade import OptionTrade
 from src.market import Market
-from src.trinomial_model import TrinomialModel
+from src_trinomial.trinomial_model import TrinomialModel
+from src.black_scholes import BlackScholes
+
+PLOTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "plots")
+os.makedirs(PLOTS_DIR, exist_ok=True)
 
 import time
 import math
@@ -25,11 +34,9 @@ mat_date = date(2026, 9, 1)
 T = (mat_date - pricing_date).days / 365.0
 
 # --- Prix Black-Scholes (benchmark) ---
-bs_call = Call(
-    S=S0, K=K, r=r, T=T, sigma=sigma,
-    div_a=div_a, ex_div_date=ex_div_date, pricing_date=pricing_date
-)
-bs_price = bs_call.price()
+_bs_market = Market(underlying=S0, vol=sigma, rate=r, div_a=div_a, ex_div_date=ex_div_date)
+_bs_option = OptionTrade(mat=mat_date, call_put="CALL", ex="EUROPEAN", k=K)
+bs_price = BlackScholes(_bs_market, _bs_option, pricing_date).price()
 print(f"Black-Scholes Call price: {bs_price:.6f}")
 
 # --- Paramètres du test de convergence ---
@@ -96,7 +103,9 @@ plt.title("Convergence of Trinomial Tree to Black-Scholes")
 plt.legend()
 plt.grid(True, linestyle="--", alpha=0.5)
 plt.tight_layout()
-plt.show()
+plt.savefig(os.path.join(PLOTS_DIR, 'trinomial_convergence_price.png'), dpi=150)
+plt.close()
+print(f"✓ Saved trinomial_convergence_price.png")
 
 # --- Plot absolute error ---
 errors = [abs(p - bs_price) for p in tree_prices]
@@ -109,7 +118,9 @@ plt.ylabel("Absolute error (log scale)")
 plt.title("Absolute error between Trinomial Tree and Black-Scholes")
 plt.grid(True, linestyle="--", alpha=0.5)
 plt.tight_layout()
-plt.show()
+plt.savefig(os.path.join(PLOTS_DIR, 'trinomial_convergence_error.png'), dpi=150)
+plt.close()
+print(f"✓ Saved trinomial_convergence_error.png")
 
 # --- Plot scaled error (error_bis) ---
 error_bis = [
@@ -124,7 +135,9 @@ plt.title("Scaled error (N * (Tree price - Black-Scholes))")
 plt.axhline(0.0, color="black", linewidth=0.6, linestyle="--")
 plt.grid(True, linestyle="--", alpha=0.5)
 plt.tight_layout()
-plt.show()
+plt.savefig(os.path.join(PLOTS_DIR, 'trinomial_convergence_scaled.png'), dpi=150)
+plt.close()
+print(f"✓ Saved trinomial_convergence_scaled.png")
 
 #version sans dividende 
 """from datetime import date, timedelta

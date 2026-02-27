@@ -6,6 +6,17 @@ Test script for Longstaff-Schwartz American pricing vs Trinomial Tree
 - Analyze accuracy improvements
 """
 
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+
+PLOTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "plots")
+os.makedirs(PLOTS_DIR, exist_ok=True)
+
 from datetime import date, timedelta
 from src.market import Market
 from src.option_trade import OptionTrade
@@ -474,6 +485,59 @@ def test_american_vs_european_ls():
                 print(f"⚠ CALL: Difference = {early_exercise_value:.6f} (expected near 0 without dividends)")
 
 
+def plot_ls_vs_tree():
+    """
+    LS pricing vs trinomial tree reference for increasing N_sims.
+    Saves plots/ls_vs_tree.png.
+    """
+    pricing_date  = date(2025, 9, 1)
+    maturity_date = date(2026, 3, 1)
+    market = Market(underlying=100.0, vol=0.30, rate=0.05, div_a=0.0, ex_div_date=None)
+
+    # Tree reference prices for PUT and CALL
+    ref = {}
+    for cp in ['PUT', 'CALL']:
+        opt = OptionTrade(mat=maturity_date, call_put=cp, ex='AMERICAN', k=100.0)
+        tree = Tree(60, market, opt, pricing_date, prunning_threshold=1e-8)
+        tree.build_tree()
+        ref[cp] = TrinomialModel(pricing_date, tree).price(opt, "backward")
+
+    sim_counts = [1_000, 2_000, 5_000, 10_000, 20_000, 50_000]
+    ls_put, ls_call = [], []
+
+    print("\n  Calcul LS pour différents N_sims...")
+    for n in sim_counts:
+        for cp, lst in [('PUT', ls_put), ('CALL', ls_call)]:
+            opt = OptionTrade(mat=maturity_date, call_put=cp, ex='AMERICAN', k=100.0)
+            mc = MonteCarloModel(n, market, opt, pricing_date, seed=42)
+            p = mc.price_american_longstaff_schwartz_vectorized(num_steps=80, antithetic=True)['price']
+            lst.append(p)
+        print(f"    N={n:6,}  LS_PUT={ls_put[-1]:.4f}  LS_CALL={ls_call[-1]:.4f}")
+
+    fig, axes = plt.subplots(1, 2, figsize=(13, 5))
+    fig.suptitle("Longstaff-Schwartz vs Trinomial Tree\n"
+                 "(K=100, S₀=100, σ=30%, r=5%, T=6m)", fontsize=12, fontweight='bold')
+
+    for ax, ls_prices, cp, color in [
+        (axes[0], ls_put,  'PUT',  'tomato'),
+        (axes[1], ls_call, 'CALL', 'steelblue'),
+    ]:
+        ax.plot(sim_counts, ls_prices, 'o-', color=color, label='LS Monte Carlo')
+        ax.axhline(ref[cp], color='black', ls='--', lw=1.5, label=f'Tree ref = {ref[cp]:.4f}')
+        ax.set_xscale('log')
+        ax.set_xlabel('N simulations (log scale)')
+        ax.set_ylabel('Prix option américaine')
+        ax.set_title(f'American {cp}')
+        ax.legend()
+        ax.grid(alpha=0.3)
+
+    plt.tight_layout()
+    out = os.path.join(PLOTS_DIR, 'ls_vs_tree.png')
+    plt.savefig(out, dpi=150)
+    print(f"\n✓ Graphique sauvegardé : {out}")
+    plt.close()
+
+
 def main():
     """Run all LS vs Tree tests"""
     print("\n" * 2)
@@ -499,7 +563,10 @@ def main():
         
         # Test 6: American vs European
         test_american_vs_european_ls()
-        
+
+        # Plot: LS convergence vs tree reference
+        plot_ls_vs_tree()
+
         print("\n" + "=" * 100)
         print("ALL TESTS COMPLETED SUCCESSFULLY")
         print("=" * 100 + "\n")

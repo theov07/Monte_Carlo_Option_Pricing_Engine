@@ -17,7 +17,6 @@ from src.option_trade import OptionTrade
 from src.monte_carlo_model import MonteCarloModel
 from src_trinomial.tree import Tree
 from src_trinomial.trinomial_model import TrinomialModel
-from src.black_scholes import Call, Put
 
 
 def black_scholes_price(S, K, T, r, sigma, option_type='call'):
@@ -89,18 +88,20 @@ def test_european_options():
         )
         
         mc = MonteCarloModel(num_sims, market, call_option, pricing_date, seed=42)
-        comparison = mc.compare_scalar_vs_vectorized(antithetic=True)
-        
+        t0 = time.time()
+        r_sc = mc.price_european(antithetic=True)
+        t_sc = time.time() - t0
+        t0 = time.time()
+        r_vc = mc.price_european_vectorized(antithetic=True)
+        t_vc = time.time() - t0
+        speedup_c = t_sc / t_vc if t_vc > 0 else float('inf')
+
         print(f"\nCALL OPTION (with antithetic):")
-        print(f"  Scalar:        Price={comparison['scalar']['price']:.6f} | "
-              f"StdErr={comparison['scalar']['std_error']:.6f} | "
-              f"Time={comparison['scalar']['time']:.4f}s")
-        print(f"  Vectorized:    Price={comparison['vectorized']['price']:.6f} | "
-              f"StdErr={comparison['vectorized']['std_error']:.6f} | "
-              f"Time={comparison['vectorized']['time']:.4f}s")
-        print(f"  Speedup:       {comparison['speedup']:.2f}x")
-        print(f"  Price diff:    {comparison['price_difference']:.2e}")
-        print(f"  Error vs BS:   {abs(comparison['vectorized']['price'] - bs_call):.6f}")
+        print(f"  Scalar:        Price={r_sc['price']:.6f} | StdErr={r_sc['std_error']:.6f} | Time={t_sc:.4f}s")
+        print(f"  Vectorized:    Price={r_vc['price']:.6f} | StdErr={r_vc['std_error']:.6f} | Time={t_vc:.4f}s")
+        print(f"  Speedup:       {speedup_c:.2f}x")
+        print(f"  Price diff:    {abs(r_sc['price'] - r_vc['price']):.2e}")
+        print(f"  Error vs BS:   {abs(r_vc['price'] - bs_call):.6f}")
         
         # PUT option
         put_option = OptionTrade(
@@ -111,18 +112,20 @@ def test_european_options():
         )
         
         mc = MonteCarloModel(num_sims, market, put_option, pricing_date, seed=42)
-        comparison = mc.compare_scalar_vs_vectorized(antithetic=True)
-        
+        t0 = time.time()
+        r_sp = mc.price_european(antithetic=True)
+        t_sp = time.time() - t0
+        t0 = time.time()
+        r_vp = mc.price_european_vectorized(antithetic=True)
+        t_vp = time.time() - t0
+        speedup_p = t_sp / t_vp if t_vp > 0 else float('inf')
+
         print(f"\nPUT OPTION (with antithetic):")
-        print(f"  Scalar:        Price={comparison['scalar']['price']:.6f} | "
-              f"StdErr={comparison['scalar']['std_error']:.6f} | "
-              f"Time={comparison['scalar']['time']:.4f}s")
-        print(f"  Vectorized:    Price={comparison['vectorized']['price']:.6f} | "
-              f"StdErr={comparison['vectorized']['std_error']:.6f} | "
-              f"Time={comparison['vectorized']['time']:.4f}s")
-        print(f"  Speedup:       {comparison['speedup']:.2f}x")
-        print(f"  Price diff:    {comparison['price_difference']:.2e}")
-        print(f"  Error vs BS:   {abs(comparison['vectorized']['price'] - bs_put):.6f}")
+        print(f"  Scalar:        Price={r_sp['price']:.6f} | StdErr={r_sp['std_error']:.6f} | Time={t_sp:.4f}s")
+        print(f"  Vectorized:    Price={r_vp['price']:.6f} | StdErr={r_vp['std_error']:.6f} | Time={t_vp:.4f}s")
+        print(f"  Speedup:       {speedup_p:.2f}x")
+        print(f"  Price diff:    {abs(r_sp['price'] - r_vp['price']):.2e}")
+        print(f"  Error vs BS:   {abs(r_vp['price'] - bs_put):.6f}")
 
 
 def test_american_options():
