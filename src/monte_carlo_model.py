@@ -3,7 +3,7 @@ import numpy as np
 from datetime import date
 from .market import Market
 from .option_trade import OptionTrade
-from .brownien import BrownianMotion
+from .brownian_motion import BrownianMotion
 from .regression import Regression, BasisType
 
 

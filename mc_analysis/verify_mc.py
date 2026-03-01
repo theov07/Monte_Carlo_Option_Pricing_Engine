@@ -33,7 +33,7 @@ from src.market import Market
 from src.option_trade import OptionTrade
 from src.monte_carlo_model import MonteCarloModel
 from src.black_scholes import BlackScholes
-from src.brownien import BrownianMotion
+from src.brownian_motion import BrownianMotion
 from src.regression import BasisType
 
 # ══════════════════════════════════════════════════════════════════════════════
