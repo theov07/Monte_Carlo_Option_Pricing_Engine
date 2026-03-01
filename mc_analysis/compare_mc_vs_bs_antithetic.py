@@ -1,10 +1,10 @@
 """
 Compare Monte Carlo Pricing:
-- MC sans antithetic variates
-- MC avec antithetic variates
-- Black-Scholes (référence analytique)
+- MC without antithetic variates
+- MC with antithetic variates
+- Black-Scholes (analytical reference)
 
-OUTPUT : plots/antithetic_variance_reduction.png
+OUTPUT: plots/antithetic_variance_reduction.png
 """
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -32,7 +32,7 @@ def _bs_price(S0, K, T, r, sigma, call_put='CALL'):
 
 def compare_pricing(S0=100, K=100, T=1.0, r=0.05, sigma=0.2, num_sims=10000):
     """
-    Compare MC (avec/sans antithetic) vs Black-Scholes
+    Compare MC (with/without antithetic variates) vs Black-Scholes
     
     Parameters:
     -----------
@@ -69,7 +69,7 @@ def compare_pricing(S0=100, K=100, T=1.0, r=0.05, sigma=0.2, num_sims=10000):
     print("-" * 80)
     print(f"{'Black-Scholes (ref)':30} {bs_price_call:12.6f} {'':>12} {'':>12}")
     
-    # MC sans antithetic
+    # MC without antithetic
     option_call = OptionTrade(mat_date, 'CALL', 'EUROPEAN', K)
     mc_model_no_anti = MonteCarloModel(num_sims, market, option_call, pricing_date, seed=42)
     result_no_anti = mc_model_no_anti.price_european(antithetic=False)
@@ -77,16 +77,16 @@ def compare_pricing(S0=100, K=100, T=1.0, r=0.05, sigma=0.2, num_sims=10000):
     mc_std_no_anti = result_no_anti['std_error']
     error_no_anti = abs(mc_price_no_anti - bs_price_call) / bs_price_call * 100
     
-    print(f"{'MC sans antithetic':30} {mc_price_no_anti:12.6f} {mc_std_no_anti:12.6f} {error_no_anti:11.4f}%")
+    print(f"{'MC without antithetic':30} {mc_price_no_anti:12.6f} {mc_std_no_anti:12.6f} {error_no_anti:11.4f}%")
     
-    # MC avec antithetic
+    # MC with antithetic
     mc_model_with_anti = MonteCarloModel(num_sims, market, option_call, pricing_date, seed=42)
     result_with_anti = mc_model_with_anti.price_european(antithetic=True)
     mc_price_with_anti = result_with_anti['price']
     mc_std_with_anti = result_with_anti['std_error']
     error_with_anti = abs(mc_price_with_anti - bs_price_call) / bs_price_call * 100
     
-    print(f"{'MC avec antithetic':30} {mc_price_with_anti:12.6f} {mc_std_with_anti:12.6f} {error_with_anti:11.4f}%")
+    print(f"{'MC with antithetic':30} {mc_price_with_anti:12.6f} {mc_std_with_anti:12.6f} {error_with_anti:11.4f}%")
     
     # Test PUT
     print("\n" + "=" * 80)
@@ -100,7 +100,7 @@ def compare_pricing(S0=100, K=100, T=1.0, r=0.05, sigma=0.2, num_sims=10000):
     print("-" * 80)
     print(f"{'Black-Scholes (ref)':30} {bs_price_put:12.6f} {'':>12} {'':>12}")
     
-    # MC sans antithetic
+    # MC without antithetic
     option_put = OptionTrade(mat_date, 'PUT', 'EUROPEAN', K)
     mc_model_put_no_anti = MonteCarloModel(num_sims, market, option_put, pricing_date, seed=42)
     result_put_no_anti = mc_model_put_no_anti.price_european(antithetic=False)
@@ -108,16 +108,16 @@ def compare_pricing(S0=100, K=100, T=1.0, r=0.05, sigma=0.2, num_sims=10000):
     mc_std_put_no_anti = result_put_no_anti['std_error']
     error_put_no_anti = abs(mc_price_put_no_anti - bs_price_put) / bs_price_put * 100
     
-    print(f"{'MC sans antithetic':30} {mc_price_put_no_anti:12.6f} {mc_std_put_no_anti:12.6f} {error_put_no_anti:11.4f}%")
+    print(f"{'MC without antithetic':30} {mc_price_put_no_anti:12.6f} {mc_std_put_no_anti:12.6f} {error_put_no_anti:11.4f}%")
     
-    # MC avec antithetic
+    # MC with antithetic (PUT)
     mc_model_put_with_anti = MonteCarloModel(num_sims, market, option_put, pricing_date, seed=42)
     result_put_with_anti = mc_model_put_with_anti.price_european(antithetic=True)
     mc_price_put_with_anti = result_put_with_anti['price']
     mc_std_put_with_anti = result_put_with_anti['std_error']
     error_put_with_anti = abs(mc_price_put_with_anti - bs_price_put) / bs_price_put * 100
     
-    print(f"{'MC avec antithetic':30} {mc_price_put_with_anti:12.6f} {mc_std_put_with_anti:12.6f} {error_put_with_anti:11.4f}%")
+    print(f"{'MC with antithetic':30} {mc_price_put_with_anti:12.6f} {mc_std_put_with_anti:12.6f} {error_put_with_anti:11.4f}%")
     
     return {
         'call': {
@@ -139,10 +139,10 @@ def compare_pricing(S0=100, K=100, T=1.0, r=0.05, sigma=0.2, num_sims=10000):
 
 def convergence_study(S0=100, K=100, T=1.0, r=0.05, sigma=0.2):
     """
-    Étudier la convergence en fonction du nombre de simulations
+    Study convergence as a function of the number of simulations
     """
     print("\n" + "=" * 80)
-    print("ÉTUDE DE CONVERGENCE")
+    print("CONVERGENCE STUDY")
     print("=" * 80)
     
     pricing_date = date(2025, 1, 15)
@@ -156,10 +156,10 @@ def convergence_study(S0=100, K=100, T=1.0, r=0.05, sigma=0.2):
         ex_div_date=None
     )
     
-    # Référence BS
+    # BS Reference
     bs_price = _bs_price(S0, K, T, r, sigma, 'CALL')
     
-    # Test avec différents nombres de simulations
+    # Test with different numbers of simulations
     num_sims_list = [100, 500, 1000, 5000, 10000, 50000, 100000]
     
     results_no_anti = []
@@ -171,14 +171,14 @@ def convergence_study(S0=100, K=100, T=1.0, r=0.05, sigma=0.2):
     for num_sims in num_sims_list:
         option = OptionTrade(mat_date, 'CALL', 'EUROPEAN', K)
         
-        # Sans antithetic
+        # Without antithetic
         mc_no_anti = MonteCarloModel(num_sims, market, option, pricing_date, seed=42)
         res_no_anti = mc_no_anti.price_european(antithetic=False)
         price_no_anti = res_no_anti['price']
         error_no_anti = abs(price_no_anti - bs_price) / bs_price * 100
         results_no_anti.append(error_no_anti)
         
-        # Avec antithetic
+        # With antithetic
         mc_with_anti = MonteCarloModel(num_sims, market, option, pricing_date, seed=42)
         res_with_anti = mc_with_anti.price_european(antithetic=True)
         price_with_anti = res_with_anti['price']
@@ -189,31 +189,31 @@ def convergence_study(S0=100, K=100, T=1.0, r=0.05, sigma=0.2):
     
     # Plot convergence
     plt.figure(figsize=(12, 6))
-    plt.loglog(num_sims_list, results_no_anti, 'o-', label='MC sans antithetic', linewidth=2, markersize=8)
-    plt.loglog(num_sims_list, results_with_anti, 's-', label='MC avec antithetic', linewidth=2, markersize=8)
+    plt.loglog(num_sims_list, results_no_anti, 'o-', label='MC without antithetic', linewidth=2, markersize=8)
+    plt.loglog(num_sims_list, results_with_anti, 's-', label='MC with antithetic', linewidth=2, markersize=8)
     
     # Référence 1/sqrt(N)
     ref_convergence = np.array([100 / np.sqrt(n) for n in num_sims_list])
-    plt.loglog(num_sims_list, ref_convergence, '--', label='Référence 1/√N', linewidth=2, color='gray', alpha=0.7)
+    plt.loglog(num_sims_list, ref_convergence, '--', label='Reference 1/sqrt(N)', linewidth=2, color='gray', alpha=0.7)
     
-    plt.xlabel('Nombre de simulations (N)', fontsize=12)
-    plt.ylabel('Erreur relative (%)', fontsize=12)
-    plt.title('Convergence Monte Carlo - CALL ATM', fontsize=14, fontweight='bold')
+    plt.xlabel('Number of simulations (N)', fontsize=12)
+    plt.ylabel('Relative error (%)', fontsize=12)
+    plt.title('Monte Carlo Convergence - ATM CALL', fontsize=14, fontweight='bold')
     plt.legend(fontsize=11)
     plt.grid(True, alpha=0.3, which='both')
     plt.tight_layout()
     out_conv = os.path.join(PLOTS_DIR, 'antithetic_convergence.png')
     plt.savefig(out_conv, dpi=150)
-    print(f"\n\u2713 Graphique sauvegard\u00e9: {out_conv}")
+    print(f"\n\u2713 Saved: {out_conv}")
     plt.close()
 
 
 def variance_reduction_analysis(S0=100, K=100, T=1.0, r=0.05, sigma=0.2, num_sims=10000):
     """
-    Analyser la réduction de variance avec antithetic variates
+    Analyse variance reduction with antithetic variates
     """
     print("\n" + "=" * 80)
-    print("ANALYSE DE RÉDUCTION DE VARIANCE")
+    print("VARIANCE REDUCTION ANALYSIS")
     print("=" * 80)
     
     pricing_date = date(2025, 1, 15)
@@ -229,12 +229,12 @@ def variance_reduction_analysis(S0=100, K=100, T=1.0, r=0.05, sigma=0.2, num_sim
     
     option = OptionTrade(mat_date, 'CALL', 'EUROPEAN', K)
     
-    # Sans antithetic
+    # Without antithetic
     mc_no_anti = MonteCarloModel(num_sims, market, option, pricing_date, seed=42)
     res_no_anti = mc_no_anti.price_european(antithetic=False)
     payoffs_no_anti = np.array(res_no_anti['payoffs'])
     
-    # Avec antithetic
+    # With antithetic
     mc_with_anti = MonteCarloModel(num_sims, market, option, pricing_date, seed=42)
     res_with_anti = mc_with_anti.price_european(antithetic=True)
     payoffs_with_anti = np.array(res_with_anti['payoffs'])
@@ -243,39 +243,39 @@ def variance_reduction_analysis(S0=100, K=100, T=1.0, r=0.05, sigma=0.2, num_sim
     var_with_anti = np.var(payoffs_with_anti)
     reduction = (1 - var_with_anti / var_no_anti) * 100
     
-    print(f"\nVariance sans antithetic: {var_no_anti:.8f}")
-    print(f"Variance avec antithetic: {var_with_anti:.8f}")
-    print(f"Réduction de variance:    {reduction:.2f}%")
-    print(f"Facteur d'amélioration:   {var_no_anti / var_with_anti:.2f}x")
+    print(f"\nVariance without antithetic: {var_no_anti:.8f}")
+    print(f"Variance with antithetic:    {var_with_anti:.8f}")
+    print(f"Variance reduction:          {reduction:.2f}%")
+    print(f"Improvement factor:          {var_no_anti / var_with_anti:.2f}x")
     
     # Histogramme
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
     
     axes[0].hist(payoffs_no_anti, bins=50, alpha=0.7, edgecolor='black')
-    axes[0].set_title(f'Distribution payoffs\nSans antithetic (σ²={var_no_anti:.6f})', fontsize=12)
-    axes[0].set_xlabel('Payoff actualisé')
-    axes[0].set_ylabel('Fréquence')
+    axes[0].set_title(f'Payoff distribution\nWithout antithetic (var={var_no_anti:.6f})', fontsize=12)
+    axes[0].set_xlabel('Discounted payoff')
+    axes[0].set_ylabel('Frequency')
     axes[0].grid(alpha=0.3)
     
     axes[1].hist(payoffs_with_anti, bins=50, alpha=0.7, color='orange', edgecolor='black')
-    axes[1].set_title(f'Distribution payoffs\nAvec antithetic (σ²={var_with_anti:.6f})', fontsize=12)
-    axes[1].set_xlabel('Payoff actualisé')
-    axes[1].set_ylabel('Fréquence')
+    axes[1].set_title(f'Payoff distribution\nWith antithetic (var={var_with_anti:.6f})', fontsize=12)
+    axes[1].set_xlabel('Discounted payoff')
+    axes[1].set_ylabel('Frequency')
     axes[1].grid(alpha=0.3)
     
     plt.tight_layout()
     out_var = os.path.join(PLOTS_DIR, 'antithetic_variance_reduction.png')
     plt.savefig(out_var, dpi=150)
-    print(f"\n\u2713 Graphique sauvegard\u00e9: {out_var}")
+    print(f"\n\u2713 Saved: {out_var}")
     plt.close()
 
 
 if __name__ == '__main__':
-    # Comparaison simple
+    # Basic comparison
     results = compare_pricing(S0=100, K=100, T=1.0, r=0.05, sigma=0.2, num_sims=10000)
 
-    # Étude de convergence
+    # Convergence study
     convergence_study(S0=100, K=100, T=1.0, r=0.05, sigma=0.2)
 
-    # Analyse variance
+    # Variance analysis
     variance_reduction_analysis(S0=100, K=100, T=1.0, r=0.05, sigma=0.2, num_sims=10000)

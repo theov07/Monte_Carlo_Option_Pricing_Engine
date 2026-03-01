@@ -8,18 +8,18 @@ from .option_trade import OptionTrade
 
 class BlackScholes:
     """
-    Pricer analytique Black-Scholes pour options européennes.
+    Analytical Black-Scholes pricer for European options.
 
-    Utilise la même interface Market/OptionTrade que MonteCarloModel,
-    ce qui permet une comparaison directe des prix.
+    Uses the same Market/OptionTrade interface as MonteCarloModel,
+    enabling direct price comparison.
 
-    Dividende discret : ajustement du spot par la valeur présente du dividende
+    Discrete dividend: spot adjusted by the present value of the dividend
         S_eff = S0 - PV(div)  = S0 - div * exp(-r * t_div)
-    (approximation «escrow» valide si div est petit devant S0)
+    (escrow approximation, valid when div is small relative to S0)
 
-    Formules :
-        d1 = [ln(S_eff/K) + (r + σ²/2)*T] / (σ√T)
-        d2 = d1 - σ√T
+    Formulas:
+        d1 = [ln(S_eff/K) + (r + sigma^2/2)*T] / (sigma*sqrt(T))
+        d2 = d1 - sigma*sqrt(T)
         Call = S_eff * N(d1) - K * e^{-rT} * N(d2)
         Put  = K * e^{-rT} * N(-d2) - S_eff * N(-d1)
     """
@@ -30,20 +30,20 @@ class BlackScholes:
         self.pricing_date = pricing_date
 
     # ------------------------------------------------------------------
-    # Paramètres de base
+    # Base parameters
     # ------------------------------------------------------------------
 
     def _T(self) -> float:
         return (self.option.mat_date - self.pricing_date).days / 365.0
 
     def _effective_spot(self) -> float:
-        """S ajusté de la valeur présente du dividende discret."""
+        """Spot adjusted by the present value of the discrete dividend."""
         S = self.market.underlying
         if (self.market.div_a > 0 and self.market.ex_div_date is not None
                 and self.pricing_date < self.market.ex_div_date < self.option.mat_date):
             t_div = (self.market.ex_div_date - self.pricing_date).days / 365.0
             S -= self.market.div_a * math.exp(-self.market.rate * t_div)
-        return max(S, 1e-10)   # éviter log(0)
+        return max(S, 1e-10)   # avoid log(0)
 
     def _d1_d2(self):
         T = self._T()
@@ -54,13 +54,13 @@ class BlackScholes:
         return d1, d2
 
     # ------------------------------------------------------------------
-    # Prix
+    # Price
     # ------------------------------------------------------------------
 
     def price(self) -> float:
         """
-        Prix analytique BS.
-        Retourne 0.0 si la maturité est dépassée ou si l'option n'est pas CALL/PUT.
+        Analytical Black-Scholes price.
+        Returns intrinsic value if maturity has passed; 0.0 if not CALL/PUT.
         """
         T = self._T()
         if T <= 0:
@@ -78,7 +78,7 @@ class BlackScholes:
         return 0.0
 
     # ------------------------------------------------------------------
-    # Grecques (first order)
+    # Greeks (first order)
     # ------------------------------------------------------------------
 
     def delta(self) -> float:
@@ -98,13 +98,13 @@ class BlackScholes:
         return norm.pdf(d1) / (S_eff * self.market.vol * math.sqrt(T))
 
     def vega(self) -> float:
-        """dV/dσ  (pour 1 point de vol, i.e. +1%)"""
+        """dV/dsigma  (per 1 vol point, i.e. +1%)"""
         T = self._T()
         d1, _ = self._d1_d2()
         return self._effective_spot() * norm.pdf(d1) * math.sqrt(T) * 0.01
 
     def theta(self) -> float:
-        """dV/dT (par jour calendaire)"""
+        """dV/dT (per calendar day)"""
         T = self._T()
         d1, d2 = self._d1_d2()
         S_eff = self._effective_spot()
@@ -117,7 +117,7 @@ class BlackScholes:
         return 0.0
 
     def rho(self) -> float:
-        """dV/dr (pour 1 bp = 0.01%)"""
+        """dV/dr (per 1 bp = 0.01%)"""
         T = self._T()
         _, d2 = self._d1_d2()
         K, r = self.option.strike, self.market.rate
@@ -128,7 +128,7 @@ class BlackScholes:
         return 0.0
 
     def summary(self) -> dict:
-        """Retourne prix + toutes les grecques dans un dict."""
+        """Returns price and all Greeks in a dictionary."""
         return {
             'price': self.price(),
             'delta': self.delta(),

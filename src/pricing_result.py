@@ -1,12 +1,12 @@
 """
-PricingResult — Dataclass unifié pour tous les résultats de pricing.
+PricingResult -- Unified dataclass for all pricing results.
 
-Chaque méthode de MonteCarloModel (et BlackScholes) retourne un PricingResult
-au lieu d'un dict ou d'un simple float, ce qui permet :
-  - un affichage standardisé (str / repr)
-  - le calcul d'intervalles de confiance
-  - la comparaison facile avec une référence analytique
-  - l'agrégation dans ConvergenceStudy
+Each method of MonteCarloModel (and BlackScholes) returns a PricingResult
+instead of a plain dict or float, enabling:
+  - standardised display (str / repr)
+  - confidence interval computation
+  - easy comparison with an analytical reference
+  - aggregation in ConvergenceStudy
 """
 from __future__ import annotations
 
@@ -19,24 +19,24 @@ from typing import Optional
 @dataclass
 class PricingResult:
     """
-    Résultat d'un calcul de prix.
+    Unified pricing result container.
 
-    Attributs
-    ---------
+    Attributes
+    ----------
     price : float
-        Prix de l'option estimé.
+        Estimated option price.
     std_error : float
-        Erreur standard MC (0 pour les méthodes analytiques).
+        MC standard error (0 for analytical methods).
     num_paths : int
-        Nombre de trajectoires utilisées (0 pour analytique).
+        Number of paths used (0 for analytical).
     elapsed_s : float
-        Temps de calcul en secondes.
+        Wall-clock computation time in seconds.
     method : str
-        Nom de la méthode (ex. 'MC-European', 'LS-American', 'Black-Scholes').
+        Method name (e.g. 'MC-European', 'LS-American', 'Black-Scholes').
     num_steps : int
-        Nombre de pas de temps (0 pour les méthodes sans discrétisation).
+        Number of time steps (0 for methods without discretisation).
     extra : dict
-        Métadonnées libres (poly_basis, antithetic, …).
+        Free-form metadata (poly_basis, antithetic, ...).
     """
 
     price: float
@@ -48,17 +48,17 @@ class PricingResult:
     extra: dict = field(default_factory=dict)
 
     # ------------------------------------------------------------------
-    # Intervalles de confiance
+    # Confidence intervals
     # ------------------------------------------------------------------
 
     def confidence_interval(self, alpha: float = 0.05) -> tuple[float, float]:
         """
-        Intervalle de confiance bilatéral au niveau (1-alpha).
+        Two-sided confidence interval at level (1-alpha).
 
         Parameters
         ----------
         alpha : float, default 0.05
-            Niveau de signification (0.05 → IC à 95 %).
+            Significance level (0.05 -> 95% CI).
 
         Returns
         -------
@@ -66,37 +66,37 @@ class PricingResult:
         """
         if self.std_error <= 0 or self.num_paths <= 1:
             return (self.price, self.price)
-        # Quantile normal (approximation Student → Normal pour grands n)
+        # Normal quantile (Student -> Normal approximation for large n)
         from scipy.stats import norm as _norm
         z = _norm.ppf(1 - alpha / 2)
         margin = z * self.std_error
         return (self.price - margin, self.price + margin)
 
     # ------------------------------------------------------------------
-    # Comparaison avec référence
+    # Comparison against reference
     # ------------------------------------------------------------------
 
     def relative_error(self, reference: float) -> float:
         """
-        Erreur relative par rapport à un prix de référence.
+        Relative error against an analytical reference price.
 
             rel_error = (price - reference) / reference
 
         Returns
         -------
-        float : erreur relative (positive = surestimation)
+        float : relative error (positive = overestimate)
         """
         if abs(reference) < 1e-12:
             return float('nan')
         return (self.price - reference) / reference
 
     def in_confidence_interval(self, reference: float, alpha: float = 0.05) -> bool:
-        """Retourne True si `reference` est dans l'IC au niveau 1-alpha."""
+        """Returns True if `reference` lies within the (1-alpha) confidence interval."""
         lo, hi = self.confidence_interval(alpha)
         return lo <= reference <= hi
 
     # ------------------------------------------------------------------
-    # Affichage
+    # Display
     # ------------------------------------------------------------------
 
     def __str__(self) -> str:

@@ -1,6 +1,6 @@
 """
-INPUT : PARAMÈTRES DU MARCHÉ, DE L'OPTION, ET DE LA SIMULATION MC
-OUTPUT : prix de l'option par MC (avec IC) et par BS (si européen), Greeks MC, variance empirique du prix sur N_RUNS répétitions indépendantes.
+INPUT : Market parameters, option parameters, and MC simulation settings.
+OUTPUT : Option price via MC (with CI) and BS (if European), MC Greeks, empirical price variance over N_RUNS independent runs.
 """
 
 import math
@@ -14,7 +14,7 @@ from src.regression import BasisType
 from src.greeks import MCGreeks
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  PARAMÈTRES
+#  PARAMETERS
 # ══════════════════════════════════════════════════════════════════════════════
 
 PRICING_DATE = date(2026, 2, 26)
@@ -22,27 +22,27 @@ MATURITY     = date(2027, 4, 26)
 
 UNDERLYING   = 100    # S₀
 STRIKE       = 90    # K
-VOL          = 0.25      # σ  (ex : 0.25 = 25 %)
-RATE         = 0.04      # r  (ex : 0.04 = 4 %)
+VOL          = 0.25      # σ  (e.g. 0.25 = 25%)
+RATE         = 0.04      # r  (e.g. 0.04 = 4%)
 
-# Dividende discret  (mettre DIV_AMOUNT = 0 ou EX_DIV_DATE = None si absent)
+# Discrete dividend  (set DIV_AMOUNT = 0 or EX_DIV_DATE = None if absent)
 DIV_AMOUNT   = 3.0
-EX_DIV_DATE  = date(2026, 6, 21)   # None si pas de dividende
+EX_DIV_DATE  = date(2026, 6, 21)   # None if no dividend
 
-CALL_PUT     = 'PUT'        # 'CALL' ou 'PUT'
-EXERCISE     = 'AMERICAN'    # 'EUROPEAN' ou 'AMERICAN'
+CALL_PUT     = 'PUT'        # 'CALL' or 'PUT'
+EXERCISE     = 'AMERICAN'    # 'EUROPEAN' or 'AMERICAN'
 
 # Monte Carlo
 MC_PATHS      = 100_000
-MC_STEPS      = 250           # pas de temps (pour l'américain)
+MC_STEPS      = 250           # time steps (for American options)
 MC_ANTITHETIC = True
 MC_SEED       = 2
 
-# Répétitions indépendantes en changeant la seed pour estimer la variance empirique du prix
+# Independent runs with different seeds to estimate the empirical price variance
 N_RUNS        = 10
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  CALCUL
+#  COMPUTATION
 # ══════════════════════════════════════════════════════════════════════════════
 
 div_date = EX_DIV_DATE if DIV_AMOUNT > 0 else None
@@ -55,8 +55,8 @@ print("═" * 52)
 print(f"  Option  : {CALL_PUT}  {EXERCISE}")
 print(f"  S={UNDERLYING}  K={STRIKE}  σ={VOL:.0%}  r={RATE:.0%}")
 if div_date:
-    print(f"  Dividende : {DIV_AMOUNT} le {div_date}")
-print(f"  Maturité : {MATURITY}  (Date d'évaluation : {PRICING_DATE})")
+    print(f"  Dividend  : {DIV_AMOUNT} on {div_date}")
+print(f"  Maturity  : {MATURITY}  (Pricing date: {PRICING_DATE})")
 print("─" * 52)
 
 # Black-Scholes (pour européen uniquement)
@@ -77,16 +77,16 @@ else:
 price = r['price']
 se    = r['std_error']
 N     = len(r['payoffs'])
-sigma_payoffs = se * math.sqrt(N)   # écart-type brut des payoffs actualisés
+sigma_payoffs = se * math.sqrt(N)   # raw std dev of discounted payoffs
 
-print(f"  Monte Carlo ({MC_PATHS:,} paths)  :  {price:>10.4f}  ±{1.96*se:.4f}  (IC 95 %)")
-print(f"  σ payoffs (brut)       :  {sigma_payoffs:>10.4f}  = SE × √N = {se:.4f} × √{N:,}")
-print(f"  Variance payoffs       :  {sigma_payoffs**2:>10.4f}  = σ²  (variance d'un payoff individuel)")
-print(f"  Variance du prix (SE²) :  {se**2:>10.6f}  = σ²/N  (variance de l'estimateur)")
+print(f"  Monte Carlo ({MC_PATHS:,} paths)  :  {price:>10.4f}  ±{1.96*se:.4f}  (95% CI)")
+print(f"  σ payoffs (raw)        :  {sigma_payoffs:>10.4f}  = SE × √N = {se:.4f} × √{N:,}")
+print(f"  Variance payoffs       :  {sigma_payoffs**2:>10.4f}  = σ²  (variance of one individual payoff)")
+print(f"  Price variance  (SE²)  :  {se**2:>10.6f}  = σ²/N  (estimator variance)")
 print("─" * 52)
 
-# Greeks Monte Carlo (méthode par différence finies)
-print(f"  Calcul des Greeks MC ({MC_PATHS:,} paths, CRN)...")
+# Monte Carlo Greeks (finite difference method)
+print(f"  Computing MC Greeks ({MC_PATHS:,} paths, CRN)...")
 g_calc   = MCGreeks(
     market=market,
     option=option,
@@ -97,7 +97,7 @@ g_calc   = MCGreeks(
     num_steps=MC_STEPS,
 )
 greeks = g_calc.all_greeks()
-print(f"  {'Greek':<8}  {'Valeur':>10}   {'SE':>10}")
+print(f"  {'Greek':<8}  {'Value':>10}   {'SE':>10}")
 print("─" * 52)
 for g in (greeks.delta, greeks.gamma, greeks.vega, greeks.theta, greeks.rho):
     if math.isnan(g.value):
@@ -109,17 +109,17 @@ print("─" * 52)
 # Hedging 
 delta_val = greeks.delta.value
 gamma_val = greeks.gamma.value
-hedge_sign = "acheter" if delta_val < 0 else "vendre"
-print(f"  Delta hedge  : si long 1 option → {hedge_sign} {abs(delta_val):.4f} action(s)")
-print(f"                 si long N options → {hedge_sign} N × {abs(delta_val):.4f} actions")
-print(f"                 (pour N options short : inverser la direction)")
+hedge_sign = "buy" if delta_val < 0 else "sell"
+print(f"  Delta hedge  : if long 1 option -> {hedge_sign} {abs(delta_val):.4f} share(s)")
+print(f"                 if long N options -> {hedge_sign} N × {abs(delta_val):.4f} shares")
+print(f"                 (for N short options: reverse the direction)")
 gamma_pct = gamma_val * UNDERLYING * 0.01
 print(f"  Gamma ×(S₀×1%) = {gamma_val:.5f} × {UNDERLYING}×0.01 = {gamma_pct:.5f}")
-print(f"                 → variation du delta pour un mouvement de 1 % du sous-jacent")
+print(f"                 → delta change for a 1% underlying move")
 print("─" * 52)
 
-# VARIANCE EMPIRIQUE 
-print(f"  Calcul variance empirique sur {N_RUNS} runs...")
+# EMPIRICAL VARIANCE
+print(f"  Computing empirical variance over {N_RUNS} runs...")
 prices_runs = []
 for seed in range(MC_SEED, MC_SEED + N_RUNS):
     mc_i = MonteCarloModel(MC_PATHS, market, option, PRICING_DATE, seed=seed)
@@ -138,8 +138,8 @@ mean_runs  = np.mean(prices_arr)
 var_runs   = np.var(prices_arr, ddof=1)
 std_runs   = np.std(prices_arr, ddof=1)
 
-print(f"  Moyenne  ({N_RUNS} runs)        :  {mean_runs:>10.4f}")
-print(f"  Variance empirique prix  :  {var_runs:>10.6f}  (sur {N_RUNS} runs)")
-print(f"  Écart-type inter-runs    :  {std_runs:>10.6f}  ≈ SE théorique = {se:.6f}")
+print(f"  Mean     ({N_RUNS} runs)        :  {mean_runs:>10.4f}")
+print(f"  Empirical price variance :  {var_runs:>10.6f}  (over {N_RUNS} runs)")
+print(f"  Inter-run std dev        :  {std_runs:>10.6f}  ~= theoretical SE = {se:.6f}")
 print("═" * 52)
 print()

@@ -206,17 +206,17 @@ def plot_antithetic_comparison():
     se_o = np.array(se_without)
 
     fig, axes = plt.subplots(1, 2, figsize=(13, 5))
-    fig.suptitle("Réduction de variance antithétique — American PUT LS\n"
-                 f"K={K}, σ=30%, r=5%, T=6m, poly_degree={LS_DEGREE}",
+    fig.suptitle("Antithetic variance reduction -- American PUT LS\n"
+                 f"K={K}, sigma=30%, r=5%, T=6m, poly_degree={LS_DEGREE}",
                  fontsize=12, fontweight='bold')
 
     # Panel 1 — log-log SE vs N
     ax = axes[0]
-    ax.loglog(ns, se_o, 'o--', color='tomato',    lw=1.8, ms=6, label='Sans antithétique')
-    ax.loglog(ns, se_w, 's-',  color='steelblue', lw=1.8, ms=6, label='Avec antithétique')
+    ax.loglog(ns, se_o, 'o--', color='tomato',    lw=1.8, ms=6, label='Without antithetic')
+    ax.loglog(ns, se_w, 's-',  color='steelblue', lw=1.8, ms=6, label='With antithetic')
     # Theoretical -0.5 slope reference
     anchor = se_o[0] * (ns[0] / ns) ** 0.5
-    ax.loglog(ns, anchor, ':', color='gray', lw=1.2, label='Pente théorique −½')
+    ax.loglog(ns, anchor, ':', color='gray', lw=1.2, label='Theoretical slope -1/2')
     ax.set_xlabel('N simulations (log)')
     ax.set_ylabel('Std error (log)')
     ax.set_title('Std error vs N  (log-log)')
@@ -231,7 +231,7 @@ def plot_antithetic_comparison():
     ax2.fill_between(ns, 1.0, ratio, alpha=0.15, color='mediumseagreen')
     ax2.set_xlabel('N simulations (log)')
     ax2.set_ylabel('SE_plain / SE_antith')
-    ax2.set_title('Gain en précision  (ratio > 1 = antithétique meilleur)')
+    ax2.set_title('Precision gain  (ratio > 1 = antithetic is better)')
     ax2.grid(alpha=0.3)
     # Annotate last point
     ax2.annotate(f'×{ratio[-1]:.2f}',
@@ -293,7 +293,7 @@ def plot_am_vs_eu():
     ax.plot(spots, tree_put, 'k--o', ms=5, lw=1.5, label='Trinomial Tree (ref)')
     ax.plot(spots, ls_put,  'tomato', marker='s', ms=5, lw=1.5, ls='-', label='LS MC')
     ax.set_xlabel('Spot S₀')
-    ax.set_ylabel('Prix PUT américain')
+    ax.set_ylabel('American PUT price')
     ax.set_title('LS MC vs Trinomial Tree')
     ax.legend(); ax.grid(alpha=0.3)
 
@@ -307,7 +307,7 @@ def plot_am_vs_eu():
     ax2.set_xticks(x); ax2.set_xticklabels(spots)
     ax2.set_xlabel('Spot S₀')
     ax2.set_ylabel('AM − EU')
-    ax2.set_title("Prime d'exercice anticipé (AM − EU)")
+    ax2.set_title("Early exercise premium (AM - EU)")
     ax2.legend(); ax2.grid(axis='y', alpha=0.3)
 
     # Panel 3: SE log-log slope
@@ -316,10 +316,10 @@ def plot_am_vs_eu():
     se_arr = np.array(se_vals)
     ax3.loglog(ns_arr, se_arr, 'o-', color='steelblue', ms=6, lw=1.8, label='SE empirique')
     slope_ref = se_arr[0] * (ns_arr[0] / ns_arr) ** 0.5
-    ax3.loglog(ns_arr, slope_ref, '--', color='gray', lw=1.2, label='Pente −½ théorique')
+    ax3.loglog(ns_arr, slope_ref, '--', color='gray', lw=1.2, label='Theoretical slope -1/2')
     ax3.set_xlabel('N simulations')
     ax3.set_ylabel('Std error')
-    ax3.set_title('Convergence SE  (log-log, pente ≈ −½)')
+    ax3.set_title('SE convergence  (log-log, slope ~= -1/2)')
     ax3.legend(); ax3.grid(True, which='both', alpha=0.3)
 
     plt.tight_layout()

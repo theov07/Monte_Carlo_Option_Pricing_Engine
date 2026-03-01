@@ -31,16 +31,16 @@ class MonteCarloModel:
         self.option = option
         self.pricing_date = pricing_date
         self.seed = seed
-        # Pas de np.random.seed global : chaque BrownianMotion gère son propre
-        # objet Generator (default_rng) avec self.seed, reproductibilité locale.
+        # No global np.random.seed: each BrownianMotion manages its own
+        # Generator object (default_rng) with self.seed for local reproducibility.
 
     # ------------------------------------------------------------------
-    # Helpers privés
+    # Private helpers
     # ------------------------------------------------------------------
 
     def _get_market_params(self):
-        """Extrait (T, S0, sigma, r, q=0) depuis market + option.
-        Le dividende discret est géré séparément via _get_jdiv."""
+        """Extracts (T, S0, sigma, r, q=0) from market and option objects.
+        The discrete dividend is handled separately via _get_jdiv."""
         T = (self.option.mat_date - self.pricing_date).days / 365.0
         S0 = self.market.underlying
         sigma = self.market.vol
@@ -49,14 +49,14 @@ class MonteCarloModel:
 
     def _get_jdiv(self, num_steps: int) -> tuple:
         """
-        Calcule (div, jdiv) pour le dividende discret (formule cours 5-Feb).
+        Computes (div, jdiv) for the discrete dividend (cash subtraction model).
 
-        tex est approximé au premier step j tel que j*dt >= tex  (ceil).
+        The ex-dividend step is the first step j such that j*dt >= tex (ceiling).
 
         Returns
         -------
-        div  : float, montant du dividende (0.0 si absent)
-        jdiv : int ou None, index 1-basé du step ex-div
+        div  : float, dividend amount (0.0 if absent)
+        jdiv : int or None, 1-based index of the ex-dividend step
         """
         if (self.market.ex_div_date is None
                 or self.market.ex_div_date >= self.option.mat_date
@@ -69,26 +69,26 @@ class MonteCarloModel:
         return self.market.div_a, min(max(jdiv, 1), num_steps)
 
     def _payoff_vec(self, S: np.ndarray) -> np.ndarray:
-        """Payoff vectorisé : max(S-K, 0) ou max(K-S, 0)."""
+        """Vectorized payoff: max(S-K, 0) for calls or max(K-S, 0) for puts."""
         if self.option.is_a_call():
             return np.maximum(S - self.option.strike, 0)
-        #return np.where(S <= self.option.strike, 1.0, 0.0) ligne ajoutée pour le qcm, pour l'option one touch binaire avec exercice américain 
+        #return np.where(S <= self.option.strike, 1.0, 0.0)  # one-touch binary option with American exercise
         return np.maximum(self.option.strike - S, 0)
 
     def _num_paths(self, antithetic: bool) -> int:
-        """Nombre de paths indépendants selon le flag antithétique."""
+        """Number of independent paths based on the antithetic variates flag."""
         return self.num_simulations // 2 if antithetic else self.num_simulations
 
     # ------------------------------------------------------------------
-    # Pricing Européen — Scalaire
+    # European Pricing — Scalar
     # ------------------------------------------------------------------
 
     def price_european(self, antithetic=True) -> dict:
         """
-        Price a European option using scalar Monte Carlo.
+        Price a European option using scalar (path-by-path) Monte Carlo.
 
-        1. Pour chaque path : dW ~ BrownianMotion, S_T = GBM, payoff, discount
-        2. Moyenne des payoffs discountés.
+        1. For each path: draw dW, compute S_T via GBM, apply payoff, discount.
+        2. Average the discounted payoffs.
         """
         T, S0, sigma, r, q = self._get_market_params()
 
@@ -97,7 +97,7 @@ class MonteCarloModel:
 
         num_paths = self._num_paths(antithetic)
         df = np.exp(-r * T)
-        # BrownianMotion avec 1 step = 1 incrément dW par path (saut direct vers T)
+        # BrownianMotion with 1 step = 1 increment dW per path (single jump to T)
         bm = BrownianMotion(1, 1, T, antithetic=antithetic, seed=self.seed)
         discounted_payoffs = []
 
@@ -122,13 +122,13 @@ class MonteCarloModel:
         """
         Price a European option using vectorized Monte Carlo.
 
-        Si un dividende discret est présent, utilise generate_paths (avec
-        num_steps_div pas de temps) pour capturer le saut ex-div.
-        Sinon, utilise generate_terminal_prices (saut direct vers T, plus rapide).
+        If a discrete dividend is present, uses generate_paths (with
+        num_steps_div time steps) to capture the ex-dividend drop.
+        Otherwise, uses generate_terminal_prices (single jump to T, faster).
 
         Parameters
         ----------
-        num_steps_div : nombre de pas utilisés quand div > 0 (défaut 100).
+        num_steps_div : number of time steps used when div > 0 (default 100).
         """
         T, S0, sigma, r, q = self._get_market_params()
 
@@ -140,7 +140,7 @@ class MonteCarloModel:
         div, jdiv = self._get_jdiv(num_steps_div)
 
         if jdiv is not None:
-            # Dividende discret : simulation complète path par path
+            # Discrete dividend: full multi-step path simulation
             bm = BrownianMotion(num_paths, num_steps_div, T,
                                 antithetic=antithetic, seed=self.seed)
             S_paths, S_paths_anti = bm.generate_paths(S0, r, sigma, q,
@@ -148,7 +148,7 @@ class MonteCarloModel:
             S_T      = S_paths[:, -1]
             S_T_anti = S_paths_anti[:, -1] if antithetic else None
         else:
-            # Sans dividende : saut direct S0 → S(T), plus rapide
+            # No dividend: single jump S0 -> S(T), faster
             bm = BrownianMotion(num_paths, 1, T, antithetic=antithetic, seed=self.seed)
             S_T, S_T_anti = bm.generate_terminal_prices(S0, r, sigma, q)
 
@@ -166,9 +166,9 @@ class MonteCarloModel:
         """
         Price an American option with naive scalar backward induction.
 
-        Pour chaque path :
-          - Genere S(t) pas a pas via BrownianMotion (scalaire)
-          - Backward : value = max(intrinsic, continuation * df)
+        For each path:
+          - Simulates S(t) step by step via BrownianMotion (scalar mode)
+          - Backward sweep: value = max(intrinsic, continuation * df)
         """
         T, S0, sigma, r, q = self._get_market_params()
 
@@ -221,8 +221,8 @@ class MonteCarloModel:
         """
         Price an American option with vectorized backward induction.
 
-        Même algorithme que price_american_naive mais vectorisé.
-        Utilise BrownianMotion.generate_paths() → matrice (num_paths, num_steps+1).
+        Same algorithm as price_american_naive but fully vectorized.
+        Uses BrownianMotion.generate_paths() -> matrix of shape (num_paths, num_steps+1).
         """
         T, S0, sigma, r, q = self._get_market_params()
 
@@ -237,7 +237,7 @@ class MonteCarloModel:
         bm = BrownianMotion(num_paths, num_steps, T, antithetic=antithetic, seed=self.seed)
         S_paths, S_paths_anti = bm.generate_paths(S0, r, sigma, q, div=div, jdiv=jdiv)
 
-        # Backward induction — paths principaux
+        # Backward induction - primary paths
         values = self._payoff_vec(S_paths[:, -1])
         for step in range(num_steps - 1, -1, -1):
             values = np.maximum(self._payoff_vec(S_paths[:, step]), values * df)
@@ -263,15 +263,15 @@ class MonteCarloModel:
         """
         Price an American option using Longstaff-Schwartz regression (vectorized).
 
-        Amélioration vs naïf : régression polynomiale E[continuation | S_t] sur
-        les paths ITM pour estimer la valeur de continuation.
+        Improvement over naive method: polynomial regression E[continuation | S_t]
+        on ITM paths to estimate the continuation value at each exercise date.
 
         Parameters
         ----------
-        poly_basis          : base polynomiale (BasisType.POWER par défaut,
-                              LAGUERRE recommandé — cf. article original L&S)
-        residual_threshold  : seuil résiduel pour l'exercice (0 = LS standard,
-                              >0 réduit les exercices prématurés)
+        poly_basis          : polynomial basis type (BasisType.POWER default,
+                              LAGUERRE recommended -- see original L&S paper)
+        residual_threshold  : residual-based exercise threshold (0 = standard LS,
+                              >0 reduces premature early exercise)
         """
         T, S0, sigma, r, q = self._get_market_params()
 
@@ -286,12 +286,12 @@ class MonteCarloModel:
         bm = BrownianMotion(num_paths, num_steps, T, antithetic=antithetic, seed=self.seed)
         S_paths, S_paths_anti = bm.generate_paths(S0, r, sigma, q, div=div, jdiv=jdiv)
 
-        # Cash flows initiaux à maturité
+        # Initial cash flows at maturity
         cash_flow = self._payoff_vec(S_paths[:, -1])
         if antithetic:
             cash_flow_anti = self._payoff_vec(S_paths_anti[:, -1])
 
-        # Backward induction avec régression LS
+        # Backward induction with LS regression
         reg = Regression(degree=poly_degree, basis=poly_basis,
                          residual_threshold=residual_threshold)
         for step in range(num_steps - 1, -1, -1):

@@ -1,12 +1,12 @@
 """
-Comparaison Monte Carlo vs Black-Scholes
+Monte Carlo vs Black-Scholes Comparison
 
-Scénarios couverts :
-  1. Convergence MC vs BS pour un Call ATM
-  2. Comparaison pour différents strikes (moneyness)
-  3. Comparaison pour différentes volatilités
+Scenarios covered:
+  1. MC convergence vs BS for an ATM Call
+  2. Comparison across different strikes (moneyness)
+  3. Comparison across different volatilities
 
-OUTPUT : plots/compare_mc_bs.png
+OUTPUT: plots/compare_mc_bs.png
 """
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -24,15 +24,15 @@ os.makedirs(PLOTS_DIR, exist_ok=True)
 
 
 def _bs(market, option, pricing_date):
-    """Raccourci : prix Black-Scholes via src.black_scholes."""
+    """Shortcut: Black-Scholes price via src.black_scholes."""
     return BlackScholes(market, option, pricing_date).price()
 
 
 def compare_methods():
-    """Compare Monte Carlo et Black-Scholes"""
+    """Compare Monte Carlo and Black-Scholes"""
     
     print("=" * 80)
-    print("COMPARAISON : MONTE CARLO vs BLACK-SCHOLES")
+    print("COMPARISON: MONTE CARLO vs BLACK-SCHOLES")
     print("=" * 80)
     
     # Configuration
@@ -46,12 +46,12 @@ def compare_methods():
     
     T = (maturity_date - pricing_date).days / 365.0
     
-    print(f"\nParamètres de marché:")
+    print(f"\nMarket parameters:")
     print(f"  Spot (S0):      {S0}")
     print(f"  Strike (K):     {K}")
-    print(f"  Taux (r):       {r*100}%")
-    print(f"  Volatilité (σ): {sigma*100}%")
-    print(f"  Maturité (T):   {T:.4f} ans ({int(T*365)} jours)")
+    print(f"  Rate (r):       {r*100}%")
+    print(f"  Volatility (s): {sigma*100}%")
+    print(f"  Maturity (T):   {T:.4f} yr ({int(T*365)} days)")
     
     # Black-Scholes (prix exact)
     mkt = Market(underlying=S0, vol=sigma, rate=r, div_a=0.0, ex_div_date=None)
@@ -61,12 +61,12 @@ def compare_methods():
     bs_put  = _bs(mkt, put_opt_bs,  pricing_date)
     
     print("\n" + "-" * 80)
-    print("BLACK-SCHOLES (Prix Analytique Exact)")
+    print("BLACK-SCHOLES (Exact Analytical Price)")
     print("-" * 80)
     print(f"  Call: {bs_call:.6f}")
     print(f"  Put:  {bs_put:.6f}")
     
-    # Monte Carlo avec différents nombres de simulations
+    # Monte Carlo with different numbers of simulations
     print("\n" + "-" * 80)
     print("MONTE CARLO (Approximation)")
     print("-" * 80)
@@ -96,7 +96,7 @@ def compare_methods():
     )
     
     print("\nCALL Option:")
-    print(f"{'N Simulations':>15} | {'Prix MC':>12} | {'Erreur vs BS':>15} | {'Erreur %':>12}")
+    print(f"{'N Simulations':>15} | {'MC Price':>12} | {'Error vs BS':>15} | {'Error %':>12}")
     print("-" * 80)
     
     for n_sims in [1000, 5000, 10000, 50000, 100000, 500000]:
@@ -109,7 +109,7 @@ def compare_methods():
         print(f"{n_sims:>15,} | {mc_price:>12.6f} | {error:>15.6f} | {error_pct:>11.4f}%")
     
     print("\nPUT Option:")
-    print(f"{'N Simulations':>15} | {'Prix MC':>12} | {'Erreur vs BS':>15} | {'Erreur %':>12}")
+    print(f"{'N Simulations':>15} | {'MC Price':>12} | {'Error vs BS':>15} | {'Error %':>12}")
     print("-" * 80)
     
     for n_sims in [1000, 5000, 10000, 50000, 100000, 500000]:
@@ -123,10 +123,10 @@ def compare_methods():
 
 
 def test_different_moneyness():
-    """Test pour différents niveaux de moneyness"""
+    """Test across different moneyness levels"""
     
     print("\n\n" + "=" * 80)
-    print("COMPARAISON POUR DIFFÉRENTS STRIKES (Moneyness)")
+    print("COMPARISON FOR DIFFERENT STRIKES (Moneyness)")
     print("=" * 80)
     
     pricing_date = date(2024, 1, 1)
@@ -140,9 +140,9 @@ def test_different_moneyness():
     strikes = [80, 90, 100, 110, 120]
     n_sims = 100000
     
-    print(f"\nSpot = {S0}, T = {T:.4f} ans, N = {n_sims:,} simulations")
+    print(f"\nSpot = {S0}, T = {T:.4f} yr, N = {n_sims:,} simulations")
     print("\n" + "-" * 80)
-    print(f"{'Strike':>8} | {'Moneyness':>12} | {'BS Call':>10} | {'MC Call':>10} | {'Erreur':>10}")
+    print(f"{'Strike':>8} | {'Moneyness':>12} | {'BS Call':>10} | {'MC Call':>10} | {'Error':>10}")
     print("-" * 80)
     
     for K in strikes:
@@ -166,10 +166,10 @@ def test_different_moneyness():
 
 
 def test_different_volatilities():
-    """Test pour différentes volatilités"""
+    """Test across different volatility levels"""
     
     print("\n\n" + "=" * 80)
-    print("COMPARAISON POUR DIFFÉRENTES VOLATILITÉS")
+    print("COMPARISON FOR DIFFERENT VOLATILITIES")
     print("=" * 80)
     
     pricing_date = date(2024, 1, 1)
@@ -183,9 +183,9 @@ def test_different_volatilities():
     volatilities = [0.10, 0.20, 0.30, 0.40, 0.50]
     n_sims = 100000
     
-    print(f"\nSpot = {S0}, Strike = {K}, T = {T:.4f} ans, N = {n_sims:,} simulations")
+    print(f"\nSpot = {S0}, Strike = {K}, T = {T:.4f} yr, N = {n_sims:,} simulations")
     print("\n" + "-" * 80)
-    print(f"{'Volatilité':>12} | {'BS Call':>10} | {'MC Call':>10} | {'Erreur':>10} | {'Erreur %':>10}")
+    print(f"{'Volatility':>12} | {'BS Call':>10} | {'MC Call':>10} | {'Error':>10} | {'Error %':>10}")
     print("-" * 80)
     
     for sigma in volatilities:
@@ -202,7 +202,7 @@ def test_different_volatilities():
 
 
 def plot_summary():
-    """Graphique de synthèse : convergence + moneyness + volatilité."""
+    """Summary plot: convergence + moneyness + volatility."""
     pricing_date  = date(2024, 1, 1)
     maturity_date = date(2024, 7, 1)
     T_local       = (maturity_date - pricing_date).days / 365.0
@@ -229,7 +229,7 @@ def plot_summary():
         mc_mon.append(MonteCarloModel(50_000, mkt_k, opt_k, pricing_date, seed=42)
                       .price_european_vectorized(antithetic=True)['price'])
 
-    # Volatilité
+    # Volatility
     vols = [0.10, 0.15, 0.20, 0.30, 0.40]
     bs_vol, mc_vol = [], []
     for sv in vols:
@@ -240,16 +240,16 @@ def plot_summary():
                       .price_european_vectorized(antithetic=True)['price'])
 
     fig, axes = plt.subplots(1, 3, figsize=(17, 5))
-    fig.suptitle('Comparaison Monte Carlo vs Black-Scholes  —  Option européenne',
+    fig.suptitle('Monte Carlo vs Black-Scholes Comparison  --  European Option',
                  fontsize=13, fontweight='bold')
 
     ax = axes[0]
     ax.loglog(n_list, errors_n, 'o-', color='steelblue', lw=2, ms=6)
     ref = [100 / n**0.5 for n in n_list]
-    ax.loglog(n_list, ref, '--', color='gray', lw=1.5, label='Réf. 1/√N')
+    ax.loglog(n_list, ref, '--', color='gray', lw=1.5, label='Ref. 1/sqrt(N)')
     ax.set_xlabel('N (simulations)')
-    ax.set_ylabel('Erreur relative (%)')
-    ax.set_title(f'Convergence Call ATM (\u03c3=20%)\nBS = {bs0:.4f}')
+    ax.set_ylabel('Relative Error (%)')
+    ax.set_title(f'ATM Call Convergence (sigma=20%)\nBS = {bs0:.4f}')
     ax.legend(); ax.grid(True, which='both', alpha=0.3)
 
     ax = axes[1]
@@ -258,8 +258,8 @@ def plot_summary():
     ax.bar([i - w/2 for i in x], bs_mon, w, label='Black-Scholes', color='steelblue', alpha=0.85)
     ax.bar([i + w/2 for i in x], mc_mon, w, label='Monte Carlo',   color='tomato',    alpha=0.85)
     ax.set_xticks(list(x)); ax.set_xticklabels(mon_label, fontsize=8)
-    ax.set_ylabel("Prix Call")
-    ax.set_title('Prix par Moneyness\n(N = 50 000, \u03c3 = 20%)')
+    ax.set_ylabel("Call Price")
+    ax.set_title('Price by Moneyness\n(N = 50,000, sigma = 20%)')
     ax.legend(); ax.grid(axis='y', alpha=0.3)
 
     ax = axes[2]
@@ -274,7 +274,7 @@ def plot_summary():
     plt.tight_layout()
     out = os.path.join(PLOTS_DIR, 'compare_mc_bs.png')
     plt.savefig(out, dpi=150)
-    print(f"\n\u2713 Graphique sauvegardé : {out}")
+    print(f"\n  Plot saved: {out}")
     plt.close()
 
 
@@ -286,8 +286,8 @@ if __name__ == "__main__":
 
     print("\n" + "=" * 80)
     print("CONCLUSION:")
-    print("- Monte Carlo converge vers Black-Scholes")
-    print("- La précision augmente avec le nombre de simulations")
-    print("- L'erreur diminue en 1/√N")
-    print("- Monte Carlo fonctionne pour tous les payoffs (pas seulement européens)")
+    print("- Monte Carlo converges to Black-Scholes")
+    print("- Accuracy increases with number of simulations")
+    print("- Error decreases at rate 1/sqrt(N)")
+    print("- Monte Carlo works for all payoffs (not just European)")
     print("=" * 80)

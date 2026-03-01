@@ -1,20 +1,20 @@
 """
-Calcul des Greeks Monte Carlo par différences finies (bump & reprice)
+Monte Carlo Greeks via finite differences (bump & reprice).
 
-Méthode : différences finies centrées avec Common Random Numbers (CRN).
-Le même seed est utilisé pour les deux pricings d'un bump, ce qui réduit
-fortement la variance de l'estimateur de chaque Greek.
+Method: central finite differences with Common Random Numbers (CRN).
+The same seed is used for both pricings in a bump, which substantially
+reduces the variance of each Greek estimator.
 
-Greeks calculés :
-  Delta  — ∂P/∂S₀          bump de h_S  sur le sous-jacent
-  Gamma  — ∂²P/∂S₀²        bump de h_S  (schéma centré d'ordre 2)
-  Vega   — ∂P/∂σ            bump de h_v  sur la volatilité
-  Theta  — ∂P/∂t  (–∂P/∂T) décroissance en 1 jour calendaire
-  Rho    — ∂P/∂r            bump de h_r  sur le taux
+Greeks computed:
+  Delta  -- dP/dS0          bump of h_S  on the underlying
+  Gamma  -- d2P/dS0^2       bump of h_S  (second-order central scheme)
+  Vega   -- dP/dsigma        bump of h_v  on volatility
+  Theta  -- dP/dt  (-dP/dT) 1 calendar day decay
+  Rho    -- dP/dr            bump of h_r  on the rate
 
-SE des Greeks = propagation de l'erreur standard des priceurs élémentaires :
-  SE(ΔP / 2h) = sqrt(SE_up² + SE_down²) / (2h)   (différence centrale)
-  SE(Gamma)   = sqrt(SE_up² + 4·SE_0² + SE_down²) / h²
+SE of Greeks = error propagation from elementary pricers:
+  SE(Delta) = sqrt(SE_up^2 + SE_down^2) / (2h)   (central difference)
+  SE(Gamma) = sqrt(SE_up^2 + 4*SE_0^2 + SE_down^2) / h^2
 """
 
 import math
@@ -35,7 +35,7 @@ from src.regression import BasisType
 
 @dataclass
 class GreekResult:
-    """Valeur + erreur standard d'un Greek."""
+    """Value and standard error of a single Greek."""
     name: str
     value: float
     se: float
@@ -64,7 +64,7 @@ class AllGreeks:
 
 class MCGreeks:
     """
-    Greeks Monte Carlo par différences finies + Common Random Numbers.
+    Monte Carlo Greeks via finite differences + Common Random Numbers (CRN).
 
     Parameters
     ----------
@@ -72,22 +72,22 @@ class MCGreeks:
     option : OptionTrade
     pricing_date : date
     num_paths : int
-        Nombre de simulations par pricing.
+        Number of simulations per pricing call.
     antithetic : bool
-        Réduction de variance par variables antithétiques.
+        Use antithetic variates for variance reduction.
     seed : int or None
-        Graine de base ; chaque pricing interne utilise cette même graine
-        pour garantir la corrélation CRN.
+        Base seed; each internal pricing call uses this same seed
+        to ensure CRN correlation across bumps.
     num_steps : int
-        Nombre de pas de temps pour l'américain (ignoré pour l'européen).
+        Number of time steps for American pricing (ignored for European).
     h_S : float
-        Bump relatif sur S₀  (défaut 0.5 %).
+        Relative bump on S0 (default 0.5%).
     h_v : float
-        Bump absolu  sur σ   (défaut 1 %).
+        Absolute bump on sigma (default 1%).
     h_r : float
-        Bump absolu  sur r   (défaut 1 bp = 0.0001).
+        Absolute bump on r (default 1 bp = 0.0001).
     theta_days : float
-        Décalage temporel pour Theta en jours calendaires (défaut 1).
+        Temporal shift for Theta in calendar days (default 1).
     """
 
     def __init__(
@@ -116,10 +116,10 @@ class MCGreeks:
         self.h_r          = h_r
         self.theta_days   = theta_days
 
-    # ── helpers internes ────────────────────────────────────────────────────
+    # -- private helpers --------------------------------------------------
 
     def _new_market(self, *, S=None, vol=None, rate=None) -> Market:
-        """Clone le market en changeant un seul paramètre."""
+        """Clones the market object with a single parameter changed."""
         return Market(
             underlying  = S    if S    is not None else self.market.underlying,
             vol         = vol  if vol  is not None else self.market.vol,
@@ -129,7 +129,7 @@ class MCGreeks:
         )
 
     def _price(self, market: Market, pricing_date: date) -> dict:
-        """Lance un pricing MC avec les paramètres donnés (CRN via seed fixe)."""
+        """Runs a MC pricing with the given parameters (CRN via fixed seed)."""
         mc = MonteCarloModel(
             self.num_paths, market, self.option, pricing_date, seed=self.seed
         )
@@ -145,8 +145,8 @@ class MCGreeks:
 
     def delta(self) -> GreekResult:
         """
-        Δ = (P(S+hS) – P(S–hS)) / (2·hS)
-        Différence centrale, bump absolu dS = h_S * S₀.
+        Delta = (P(S+hS) - P(S-hS)) / (2*hS)
+        Central difference, absolute bump dS = h_S * S0.
         """
         S0 = self.market.underlying
         dS = self.h_S * S0
@@ -160,7 +160,7 @@ class MCGreeks:
 
     def gamma(self) -> GreekResult:
         """
-        Γ = (P(S+hS) – 2·P(S) + P(S–hS)) / hS²
+        Gamma = (P(S+hS) - 2*P(S) + P(S-hS)) / hS^2
         """
         S0 = self.market.underlying
         dS = self.h_S * S0
@@ -177,8 +177,8 @@ class MCGreeks:
 
     def vega(self) -> GreekResult:
         """
-        Vega = (P(σ+hv) – P(σ–hv)) / (2·hv)
-        Exprimé pour 1 % de mouvement de vol (× 0.01).
+        Vega = (P(sigma+hv) - P(sigma-hv)) / (2*hv)
+        Expressed per 1% vol move (x 0.01).
         """
         sig = self.market.vol
         dv  = self.h_v
@@ -193,13 +193,13 @@ class MCGreeks:
 
     def theta(self) -> GreekResult:
         """
-        Θ = –(P(t+Δt) – P(t)) / Δt  (convention : perte par jour)
-        Δt = theta_days / 365.
+        Theta = -(P(t+dt) - P(t)) / dt  (convention: daily time decay)
+        dt = theta_days / 365.
         """
         dt_days = timedelta(days=self.theta_days)
         date_shifted = self.pricing_date + dt_days
 
-        # Vérification : ne pas dépasser la maturité
+        # Guard: do not shift past maturity
         if date_shifted >= self.option.mat_date:
             return GreekResult('Theta', float('nan'), float('nan'))
 
@@ -213,8 +213,8 @@ class MCGreeks:
 
     def rho(self) -> GreekResult:
         """
-        ρ = (P(r+hr) – P(r–hr)) / (2·hr)
-        Exprimé pour 1 bp (× 0.0001).
+        Rho = (P(r+hr) - P(r-hr)) / (2*hr)
+        Expressed per 1 bp (x 0.0001).
         """
         rate = self.market.rate
         dr   = self.h_r
@@ -227,19 +227,19 @@ class MCGreeks:
         se    = math.sqrt(r_up['std_error']**2 + r_down['std_error']**2) / (2 * dr) * 0.0001
         return GreekResult('Rho', value, se)
 
-    # ── Calcul groupé ───────────────────────────────────────────────────────
+    # -- combined computation ---------------------------------------------
 
     def all_greeks(self) -> AllGreeks:
         """
-        Calcule tous les Greeks en une seule passe.
+        Computes all Greeks in a single pass.
 
-        Note : Delta et Gamma partagent les mêmes pricings (S±dS + S₀) pour
-        éviter les appels redondants et améliorer la cohérence CRN.
+        Note: Delta and Gamma share the same pricings (S+/-dS and S0) to
+        avoid redundant calls and improve CRN coherence.
         """
         S0 = self.market.underlying
         dS = self.h_S * S0
 
-        # Pricings partagés Delta / Gamma
+        # Shared pricings for Delta and Gamma
         r_up   = self._price(self._new_market(S=S0 + dS), self.pricing_date)
         r_0    = self._price(self.market, self.pricing_date)
         r_down = self._price(self._new_market(S=S0 - dS), self.pricing_date)
@@ -291,14 +291,14 @@ class MCGreeks:
             price=r_0['price'], price_se=r_0['std_error'],
         )
 
-    # ── Affichage ───────────────────────────────────────────────────────────
+    # -- display ----------------------------------------------------------
 
     @staticmethod
     def print_greeks(g: AllGreeks, width: int = 52) -> None:
-        """Affiche le tableau des Greeks avec leurs SE et IC 95 %."""
-        bar = "─" * width
+        """Prints the Greeks table with their standard errors and 95% CIs."""
+        bar = "-" * width
         print(bar)
-        print(f"  {'Greek':<8}  {'Valeur':>10}   {'SE':>10}")
+        print(f"  {'Greek':<8}  {'Value':>10}   {'SE':>10}")
         print(bar)
         for greek in (g.delta, g.gamma, g.vega, g.theta, g.rho):
             if math.isnan(greek.value):
@@ -308,9 +308,9 @@ class MCGreeks:
         print(bar)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  Exemple autonome
-# ─────────────────────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+#  Standalone example
+# ---------------------------------------------------------------------------
 
 if __name__ == '__main__':
     from datetime import date
@@ -323,6 +323,6 @@ if __name__ == '__main__':
     results = g_calc.all_greeks()
 
     print()
-    print("  Greeks Monte Carlo — PUT EUROPEAN   S=100  K=100  σ=20 %  r=5 %")
+    print("  Monte Carlo Greeks -- PUT EUROPEAN   S=100  K=100  sigma=20%  r=5%")
     MCGreeks.print_greeks(results)
     print()

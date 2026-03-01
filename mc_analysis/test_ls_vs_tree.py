@@ -505,7 +505,7 @@ def plot_ls_vs_tree():
     sim_counts = [1_000, 2_000, 5_000, 10_000, 20_000, 50_000]
     ls_put, ls_call = [], []
 
-    print("\n  Calcul LS pour différents N_sims...")
+    print("\n  Computing LS for different N_sims...")
     for n in sim_counts:
         for cp, lst in [('PUT', ls_put), ('CALL', ls_call)]:
             opt = OptionTrade(mat=maturity_date, call_put=cp, ex='AMERICAN', k=100.0)
@@ -526,7 +526,7 @@ def plot_ls_vs_tree():
         ax.axhline(ref[cp], color='black', ls='--', lw=1.5, label=f'Tree ref = {ref[cp]:.4f}')
         ax.set_xscale('log')
         ax.set_xlabel('N simulations (log scale)')
-        ax.set_ylabel('Prix option américaine')
+        ax.set_ylabel('American option price')
         ax.set_title(f'American {cp}')
         ax.legend()
         ax.grid(alpha=0.3)
@@ -534,7 +534,7 @@ def plot_ls_vs_tree():
     plt.tight_layout()
     out = os.path.join(PLOTS_DIR, 'ls_vs_tree.png')
     plt.savefig(out, dpi=150)
-    print(f"\n✓ Graphique sauvegardé : {out}")
+    print(f"\n  Saved: {out}")
     plt.close()
 
 

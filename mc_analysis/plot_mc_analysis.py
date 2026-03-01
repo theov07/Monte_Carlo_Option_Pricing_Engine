@@ -1,17 +1,17 @@
 """
-plot_mc_analysis.py — Visualisations pédagogiques du pricing Monte Carlo.
+plot_mc_analysis.py -- Educational visualisations for Monte Carlo option pricing.
 
-Exécuter :
+Run:
     python plot_mc_analysis.py
 
-Figures générées :
-  1. Convergence log-log  (SE vs N, pente -0.5)
-  2. Distribution des incréments Browniens  (histogramme + QQ-plot)
-  3. Martingale discountée  (mean(e^{-rt}·S(t)) vs t, devrait être S₀)
-  4. Régression Longstaff-Schwartz à un pas intermédiaire
-     (scatter ITM, courbe polynomiale, valeur intrinsèque, borne d'exercice)
-  5. Évolution de la valeur d'option pendant le backward induction
-     (EU = constante, AM = croît vers t=0 grâce à l'exercice anticipé)
+Figures generated:
+  1. Log-log convergence  (SE vs N, slope -0.5)
+  2. Brownian increment distribution  (histogram + QQ-plot)
+  3. Discounted martingale  (mean(e^{-rt}*S(t)) vs t, should equal S0)
+  4. Longstaff-Schwartz regression at an intermediate step
+     (ITM scatter, polynomial curve, intrinsic value, exercise boundary)
+  5. Option value evolution during backward induction
+     (EU = constant, AM = grows toward t=0 due to early exercise)
 """
 
 import sys
@@ -37,7 +37,7 @@ from src.brownien import BrownianMotion
 from src.regression import Regression, BasisType
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  Paramètres
+#  Parameters
 # ══════════════════════════════════════════════════════════════════════════════
 PRICING_DATE = date(2025, 1, 2)
 MAT_DATE     = date(2026, 1, 2)   # T = 1 an exact
@@ -73,20 +73,20 @@ def _backward_value_trace(S_paths: np.ndarray, option: OptionTrade,
                            r: float, T: float, num_steps: int,
                            is_american: bool) -> np.ndarray:
     """
-    Calcule V_j = mean(cash_flow_j) * exp(-r·j·dt) pour j = 0, …, num_steps.
+    Computes V_j = mean(cash_flow_j) * exp(-r*j*dt) for j = 0, ..., num_steps.
 
-    V_j représente l'estimation (discountée à t=0) de la valeur de l'option
-    à partir du pas j, en suivant la stratégie optimale de j à T.
+    V_j represents the (t=0-discounted) estimate of the option value
+    starting from step j, following the optimal strategy from j to T.
 
-    Propriétés :
-    - Européen : V_j = prix_EU pour tout j  (martingale)
-    - Américain : V_j croît de V_T ≈ prix_EU à V_0 = prix_AM
-                  (supermartingale : exercice anticipé ajoute de la valeur)
+    Properties:
+    - European: V_j = price_EU for all j  (martingale)
+    - American: V_j grows from V_T ~= price_EU to V_0 = price_AM
+                (supermartingale: early exercise adds value)
     """
     dt = T / num_steps
     df = np.exp(-r * dt)
 
-    cash_flow = _payoff_vec(S_paths[:, -1], option)   # à maturité, non discounté
+    cash_flow = _payoff_vec(S_paths[:, -1], option)   # at maturity, undiscounted
     V = np.empty(num_steps + 1)
     V[num_steps] = np.mean(cash_flow) * np.exp(-r * T)
 
@@ -98,7 +98,7 @@ def _backward_value_trace(S_paths: np.ndarray, option: OptionTrade,
             intrinsic    = _payoff_vec(S_paths[:, j], option)
             cash_flow    = reg.exercise_decision(S_paths[:, j], intrinsic, continuation)
         else:
-            # Européen : simplement discount (on conserve toujours le CF futur)
+            # European: simply discount (always keep the future CF)
             cash_flow = cash_flow * df
 
         V[j] = np.mean(cash_flow) * np.exp(-r * j * dt)
@@ -110,10 +110,10 @@ def _regression_snapshot(S_paths: np.ndarray, option: OptionTrade,
                           r: float, T: float, num_steps: int,
                           snap_step: int):
     """
-    Retourne les données au pas `snap_step` pendant le backward induction :
+    Returns the data at step `snap_step` during backward induction:
     S_itm, continuation_itm, intrinsic_all, cashflow_all_prev.
 
-    On exécute LS backward de T jusqu'à snap_step, puis on capture l'état.
+    Runs the LS backward pass from T down to snap_step, then captures the state.
     """
     dt = T / num_steps
     df = np.exp(-r * dt)
@@ -126,7 +126,7 @@ def _regression_snapshot(S_paths: np.ndarray, option: OptionTrade,
         intrinsic    = _payoff_vec(S_paths[:, j], option)
         cash_flow    = reg.exercise_decision(S_paths[:, j], intrinsic, continuation)
 
-    # Au pas snap_step : capturer les données avant la décision
+    # At step snap_step: capture data before the exercise decision
     continuation_snap = cash_flow * df
     intrinsic_snap    = _payoff_vec(S_paths[:, snap_step], option)
     S_snap            = S_paths[:, snap_step]
@@ -140,10 +140,10 @@ def _regression_snapshot(S_paths: np.ndarray, option: OptionTrade,
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  FIGURE 1 — Convergence log-log  (SE vs N)
+#  FIGURE 1 -- Log-log convergence  (SE vs N)
 # ══════════════════════════════════════════════════════════════════════════════
 def plot_convergence():
-    print("  [1/5] Convergence log-log...")
+    print("  [1/5] Log-log convergence...")
 
     n_values = [200, 500, 1_000, 2_000, 5_000, 10_000, 30_000, 80_000, 200_000]
     se_list  = []
@@ -156,27 +156,27 @@ def plot_convergence():
     ns  = np.array(n_values, dtype=float)
     ses = np.array(se_list)
 
-    # Régression log-log → pente théorique -0.5
+    # Log-log regression -- theoretical slope -0.5
     slope, intercept, rval, _, _ = stats.linregress(np.log(ns), np.log(ses))
     fit_se = np.exp(intercept) * ns ** slope
 
-    # Droite théorique -0.5 calée sur le premier point
+    # Theoretical -0.5 line anchored at the first point
     c_theo = ses[0] * ns[0] ** 0.5
     theo   = c_theo / np.sqrt(ns)
 
     fig, ax = plt.subplots(figsize=(8, 5))
-    ax.loglog(ns, ses,  'o-', color='steelblue', lw=2, ms=7, label='SE empirique')
+    ax.loglog(ns, ses,  'o-', color='steelblue', lw=2, ms=7, label='Empirical SE')
     ax.loglog(ns, fit_se, '--', color='tomato', lw=2,
-              label=f'Régression log-log  (pente = {slope:.3f})')
+              label=f'Log-log fit  (slope = {slope:.3f})')
     ax.loglog(ns, theo, ':', color='gray', lw=1.5,
-              label='Théorie  1/√N  (pente = −0.5)')
+              label='Theory  1/sqrt(N)  (slope = -0.5)')
 
-    ax.set_xlabel('N  (nombre de trajectoires)')
-    ax.set_ylabel('Erreur standard SE')
-    ax.set_title(f'Convergence Monte Carlo — pente log-log ≈ {slope:.3f}\n'
-                 f'(attendu −0.5 par le TCL)')
+    ax.set_xlabel('N  (number of paths)')
+    ax.set_ylabel('Standard Error SE')
+    ax.set_title(f'Monte Carlo Convergence -- log-log slope ~= {slope:.3f}\n'
+                 f'(expected -0.5 by CLT)')
     ax.legend()
-    ax.annotate(f'pente = {slope:.3f}', xy=(ns[-1], ses[-1]),
+    ax.annotate(f'slope = {slope:.3f}', xy=(ns[-1], ses[-1]),
                 xytext=(ns[-2]*0.4, ses[-1]*2.5),
                 fontsize=10, color='tomato',
                 arrowprops=dict(arrowstyle='->', color='tomato'))
@@ -185,10 +185,10 @@ def plot_convergence():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  FIGURE 2 — Distribution des incréments Browniens
+#  FIGURE 2 -- Brownian increment distribution
 # ══════════════════════════════════════════════════════════════════════════════
 def plot_brownian_distribution():
-    print("  [2/5] Distribution des incréments Browniens...")
+    print("  [2/5] Brownian increment distribution...")
 
     N_BM, N_STEPS_BM = 20_000, 100
     dt = T / N_STEPS_BM
@@ -200,17 +200,17 @@ def plot_brownian_distribution():
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
-    # ── Histogramme + densité théorique ─────────────────────────────────
+    # ── Histogram + theoretical density ────────────────────────────────
     ax = axes[0]
     ax.hist(Z, bins=80, density=True, color='steelblue', alpha=0.6,
-            edgecolor='white', lw=0.3, label='Z = dW/√dt  (observé)')
+            edgecolor='white', lw=0.3, label='Z = dW/sqrt(dt)  (observed)')
     x = np.linspace(-4.5, 4.5, 300)
-    ax.plot(x, stats.norm.pdf(x), 'r-', lw=2, label='N(0,1) théorique')
+    ax.plot(x, stats.norm.pdf(x), 'r-', lw=2, label='N(0,1) theoretical')
     ax.axvline(0, color='gray', lw=0.8, ls='--')
-    ax.set_xlabel('Z = dW / √dt')
-    ax.set_ylabel('Densité')
-    ax.set_title(f'Incréments Browniens normalisés\n'
-                 f'µ={np.mean(Z):.4f}  σ={np.std(Z):.4f}  '
+    ax.set_xlabel('Z = dW / sqrt(dt)')
+    ax.set_ylabel('Density')
+    ax.set_title(f'Normalised Brownian Increments\n'
+                 f'mu={np.mean(Z):.4f}  sigma={np.std(Z):.4f}  '
                  f'KS p-val={p_val:.4f}')
     ax.legend()
 
@@ -218,25 +218,25 @@ def plot_brownian_distribution():
     ax = axes[1]
     sample = np.random.default_rng(0).choice(Z, size=2_000, replace=False)
     (osm, osr), (slope_qq, intercept_qq, r_qq) = stats.probplot(sample, dist='norm')
-    ax.scatter(osm, osr, s=4, alpha=0.4, color='steelblue', label='Quantiles observés')
+    ax.scatter(osm, osr, s=4, alpha=0.4, color='steelblue', label='Observed quantiles')
     line_x = np.array([osm[0], osm[-1]])
-    ax.plot(line_x, slope_qq * line_x + intercept_qq, 'r-', lw=2, label='Droite théorique')
-    ax.set_xlabel('Quantiles théoriques N(0,1)')
-    ax.set_ylabel('Quantiles observés')
+    ax.plot(line_x, slope_qq * line_x + intercept_qq, 'r-', lw=2, label='Theoretical line')
+    ax.set_xlabel('Theoretical quantiles N(0,1)')
+    ax.set_ylabel('Observed quantiles')
     ax.set_title(f'QQ-plot — R² = {r_qq**2:.5f}')
     ax.legend()
 
-    fig.suptitle('Test de normalité des incréments Browniens  (dW ~ N(0, dt))',
+    fig.suptitle('Normality Test for Brownian Increments  (dW ~ N(0, dt))',
                  fontsize=13, fontweight='bold')
     plt.tight_layout()
     return fig
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  FIGURE 3 — Propriété de martingale du spot discounté
+#  FIGURE 3 -- Discounted spot martingale property
 # ══════════════════════════════════════════════════════════════════════════════
 def plot_martingale():
-    print("  [3/5] Martingale discountée...")
+    print("  [3/5] Discounted martingale...")
 
     N_M, NUM_STEPS = 30_000, 50
     bm = BrownianMotion(N_M, NUM_STEPS, T, antithetic=False, seed=7)
@@ -254,29 +254,29 @@ def plot_martingale():
 
     fig, ax = plt.subplots(figsize=(9, 5))
     ax.plot(times, disc_means, 'o-', ms=4, color='steelblue',
-            label='mean(e^{−rt}·S(t))  (empirique)')
+            label='mean(e^{-rt}*S(t))  (empirical)')
     ax.fill_between(times,
                     disc_means - 2 * disc_stds,
                     disc_means + 2 * disc_stds,
-                    alpha=0.2, color='steelblue', label='±2 SE')
+                    alpha=0.2, color='steelblue', label='+/-2 SE')
     ax.axhline(S0, color='red', ls='--', lw=1.5,
-               label=f'S₀ = {S0}  (valeur théorique)')
+               label=f'S0 = {S0}  (theoretical value)')
 
     max_dev = np.max(np.abs(disc_means - S0))
-    ax.set_xlabel('t  (années)')
-    ax.set_ylabel('mean(e^{−rt} · S(t))')
-    ax.set_title(f'Propriété de martingale du spot discounté\n'
-                 f'E^Q[e^{{−rt}}·S(t)] = S₀  —  déviation max = {max_dev:.4f}')
+    ax.set_xlabel('t  (years)')
+    ax.set_ylabel('mean(e^{-rt} * S(t))')
+    ax.set_title(f'Discounted spot martingale property\n'
+                 f'E^Q[e^{{-rt}}*S(t)] = S0  --  max deviation = {max_dev:.4f}')
     ax.legend()
     plt.tight_layout()
     return fig
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  FIGURE 4 — Régression LS à un pas intermédiaire
+#  FIGURE 4 -- LS regression at an intermediate step
 # ══════════════════════════════════════════════════════════════════════════════
 def plot_regression_step():
-    print("  [4/5] Régression Longstaff-Schwartz à un pas intermédiaire...")
+    print("  [4/5] Longstaff-Schwartz regression at an intermediate step...")
 
     NUM_PATHS, NUM_STEPS = 10_000, 50
     SNAP = NUM_STEPS // 2    # affiche au pas t = T/2
@@ -294,23 +294,23 @@ def plot_regression_step():
 
     fig, ax = plt.subplots(figsize=(10, 6))
 
-    # Scatter chemins ITM (sous-echantillon pour la lisibilité)
+    # ITM path scatter (sub-sample for readability)
     idx_sub = np.random.default_rng(0).choice(len(S_itm),
                                                size=min(1500, len(S_itm)),
                                                replace=False)
     ax.scatter(S_itm[idx_sub], cont_itm[idx_sub],
-               s=8, alpha=0.35, color='steelblue', label='Continuation (paths ITM)')
+               s=8, alpha=0.35, color='steelblue', label='Continuation (ITM paths)')
 
-    # Courbe de régression polynomiale
+    # Polynomial regression curve
     S_grid = np.linspace(S_itm.min(), S_itm.max(), 300)
     reg_curve = reg_snap.predict(S_grid)
-    ax.plot(S_grid, reg_curve, 'r-', lw=2.5, label='Régression polynomiale (deg 3)')
+    ax.plot(S_grid, reg_curve, 'r-', lw=2.5, label='Polynomial regression (deg 3)')
 
-    # Valeur intrinsèque IV = max(K - S, 0)
+    # Intrinsic value IV = max(K - S, 0)
     iv_grid = np.maximum(K - S_grid, 0)
-    ax.plot(S_grid, iv_grid, 'g--', lw=2, label=f'Valeur intrinsèque max(K−S,0)')
+    ax.plot(S_grid, iv_grid, 'g--', lw=2, label=f'Intrinsic value max(K-S,0)')
 
-    # Borne d'exercice : là où reg ≈ IV
+    # Exercise boundary: where reg ~= IV
     exercise_mask = iv_grid > reg_curve
     if exercise_mask.any() and (~exercise_mask).any():
         # Premier indice où on bascule (non-exercice → exercice)
@@ -318,20 +318,20 @@ def plot_regression_step():
         if len(boundary_idx) > 0:
             S_boundary = S_grid[boundary_idx[0]]
             ax.axvline(S_boundary, color='orange', lw=2, ls='-.',
-                       label=f'Borne d\'exercice ≈ {S_boundary:.1f}')
+                       label=f'Exercise boundary ~= {S_boundary:.1f}')
             ax.fill_betweenx([0, ax.get_ylim()[1] if ax.get_ylim()[1] > 0 else 20],
                               S_grid.min(), S_boundary,
                               alpha=0.07, color='orange')
-            ax.text(S_boundary - 3, 0.5, 'Exercer', color='darkorange', fontsize=9,
+            ax.text(S_boundary - 3, 0.5, 'Exercise', color='darkorange', fontsize=9,
                     ha='right', va='bottom')
-            ax.text(S_boundary + 1, 0.5, 'Conserver', color='darkblue', fontsize=9,
+            ax.text(S_boundary + 1, 0.5, 'Hold', color='darkblue', fontsize=9,
                     ha='left', va='bottom')
 
     ax.axvline(K, color='gray', lw=1, ls=':', alpha=0.6, label=f'Strike K={K}')
-    ax.set_xlabel('S(t)  —  Prix du sous-jacent')
-    ax.set_ylabel('Valeur (en t=0 dollars)')
-    ax.set_title(f'Régression Longstaff-Schwartz au pas j={SNAP}  (t={t_snap:.2f}y)\n'
-                 f'N_itm = {itm_mask.sum():,}  —  Base LAGUERRE deg 3')
+    ax.set_xlabel('S(t)  --  Underlying price')
+    ax.set_ylabel('Value (in t=0 dollars)')
+    ax.set_title(f'Longstaff-Schwartz regression at step j={SNAP}  (t={t_snap:.2f}y)\n'
+                 f'N_itm = {itm_mask.sum():,}  --  LAGUERRE basis deg 3')
     ax.legend(loc='upper right')
     ax.set_xlim(S_itm.min() - 2, min(K + 30, S_itm.max() + 2))
     ax.set_ylim(-0.5, None)
@@ -340,10 +340,10 @@ def plot_regression_step():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  FIGURE 5 — Évolution de la valeur d'option pendant le backward induction
+#  FIGURE 5 -- Option value evolution during backward induction
 # ══════════════════════════════════════════════════════════════════════════════
 def plot_backward_value_trace():
-    print("  [5/5] Évolution de la valeur option pendant le backward...")
+    print("  [5/5] Option value evolution during backward pass...")
 
     NUM_PATHS, NUM_STEPS = 20_000, 100
     bm = BrownianMotion(NUM_PATHS, NUM_STEPS, T, antithetic=False, seed=42)
@@ -356,35 +356,35 @@ def plot_backward_value_trace():
 
     fig, axes = plt.subplots(1, 2, figsize=(13, 5))
 
-    # ── Gauche : les deux courbes ────────────────────────────────────────
+    # ── Left: both curves ────────────────────────────────────────────────
     ax = axes[0]
-    ax.plot(times, V_eu, 'b-',  lw=2, label='Européen (martingale)')
-    ax.plot(times, V_am, 'r-',  lw=2, label='Américain (supermartingale)')
+    ax.plot(times, V_eu, 'b-',  lw=2, label='European (martingale)')
+    ax.plot(times, V_am, 'r-',  lw=2, label='American (supermartingale)')
     ax.axhline(BS_PUT, color='blue', lw=1, ls='--', alpha=0.6,
                label=f'BS Put = {BS_PUT:.3f}')
     ax.axhline(V_am[0], color='red', lw=1, ls='--', alpha=0.6,
-               label=f'Prix AM MC = {V_am[0]:.3f}')
+               label=f'AM MC price = {V_am[0]:.3f}')
 
-    ax.set_xlabel('t  (lecture de droite à gauche = backward)')
-    ax.set_ylabel('V(t) = mean(CF_t) × e^{−rt}')
-    ax.set_title('V_j discountée à t=0 pendant le backward\n'
-                 '(EU : plate, AM : croît vers t=0)')
+    ax.set_xlabel('t  (read right to left = backward)')
+    ax.set_ylabel('V(t) = mean(CF_t) * e^{-rt}')
+    ax.set_title('V_j discounted to t=0 during backward pass\n'
+                 '(EU: flat, AM: grows toward t=0)')
     ax.legend(fontsize=9)
 
-    # ── Droite : prime d'exercice anticipé = V_AM - V_EU ────────────────
+    # ── Right: early exercise premium = V_AM - V_EU ────────────────────
     ax = axes[1]
     premium = V_am - V_eu
-    ax.plot(times, premium, 'm-', lw=2, label='Prime américaine V_AM − V_EU')
+    ax.plot(times, premium, 'm-', lw=2, label='American premium V_AM - V_EU')
     ax.axhline(0, color='gray', lw=0.8)
     ax.fill_between(times, 0, premium, alpha=0.15, color='magenta')
-    ax.set_xlabel('t  (années)')
-    ax.set_ylabel('Prime d\'exercice anticipé')
-    ax.set_title(f'Prime d\'exercice anticipé au cours du temps\n'
-                 f'(max = {premium.min():.4f} à t=0, min = {premium.max():.4f} à t=T)')
+    ax.set_xlabel('t  (years)')
+    ax.set_ylabel('Early exercise premium')
+    ax.set_title(f'Early exercise premium over time\n'
+                 f'(max = {premium.min():.4f} at t=0, min = {premium.max():.4f} at t=T)')
     ax.legend()
 
-    fig.suptitle('Backward induction : évolution de la valeur de l\'option\n'
-                 f'(Put K={K}, S₀={S0}, σ={SIGMA:.0%}, r={R:.0%}, T={T}y)',
+    fig.suptitle('Backward induction: option value evolution\n'
+                 f'(Put K={K}, S0={S0}, sigma={SIGMA:.0%}, r={R:.0%}, T={T}y)',
                  fontsize=13, fontweight='bold')
     plt.tight_layout()
     return fig
@@ -394,17 +394,17 @@ def plot_backward_value_trace():
 #  MAIN
 # ══════════════════════════════════════════════════════════════════════════════
 if __name__ == "__main__":
-    print(f"\n{'═'*64}")
-    print("  ANALYSE GRAPHIQUE DU PRICING MONTE CARLO")
-    print(f"  S₀={S0}  K={K}  r={R:.0%}  σ={SIGMA:.0%}  T={T}y")
-    print(f"{'═'*64}\n")
+    print(f"\n{'=' *64}")
+    print("  MONTE CARLO PRICING -- GRAPHICAL ANALYSIS")
+    print(f"  S0={S0}  K={K}  r={R:.0%}  sigma={SIGMA:.0%}  T={T}y")
+    print(f"{'=' *64}\n")
 
     figs = [
-        ("Figure 1 — Convergence log-log",          plot_convergence),
-        ("Figure 2 — Distribution Brownienne",       plot_brownian_distribution),
-        ("Figure 3 — Martingale discountée",         plot_martingale),
-        ("Figure 4 — Régression LS à un step",       plot_regression_step),
-        ("Figure 5 — Backward value trace EU vs AM", plot_backward_value_trace),
+        ("Figure 1 -- Log-log convergence",          plot_convergence),
+        ("Figure 2 -- Brownian distribution",         plot_brownian_distribution),
+        ("Figure 3 -- Discounted martingale",         plot_martingale),
+        ("Figure 4 -- LS regression at a step",       plot_regression_step),
+        ("Figure 5 -- Backward value trace EU vs AM", plot_backward_value_trace),
     ]
 
     fig_names = [
@@ -415,13 +415,13 @@ if __name__ == "__main__":
         'mc_backward_trace.png',
     ]
     for (title, func), fname in zip(figs, fig_names):
-        print(f"Génération : {title}")
+        print(f"Generating: {title}")
         f = func()
         out = os.path.join(PLOTS_DIR, fname)
         f.savefig(out, dpi=150, bbox_inches='tight')
         plt.close(f)
-        print(f"  ✓ Sauvegardé : {out}")
+        print(f"  Saved: {out}")
 
-    print(f"\n{'═'*64}")
-    print("  Toutes les figures sauvegardées dans plots/")
-    print("═"*64)
+    print(f"\n{'=' *64}")
+    print("  All figures saved to plots/")
+    print('=' *64)

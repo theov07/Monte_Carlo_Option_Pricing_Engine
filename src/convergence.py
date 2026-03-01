@@ -1,8 +1,8 @@
 """
-ConvergenceStudy — Étude de la convergence Monte-Carlo.
+ConvergenceStudy -- Monte Carlo convergence analysis.
 
-Reproduit l'analyse "Step 4" du cours :
-    std_error(MC) ≈ σ_payoff / √N  →  droite log/log de pente -½
+Reproduces the "Step 4" analysis:
+    std_error(MC) ~ sigma_payoff / sqrt(N)  ->  log/log slope of -1/2
 """
 from __future__ import annotations
 
@@ -15,31 +15,31 @@ import numpy as np
 
 @dataclass
 class ConvergencePoint:
-    """Un point de la courbe de convergence."""
+    """A single point on the convergence curve."""
     n_paths: int
-    price_mean: float       # moyenne sur n_repeat tirages
-    price_std: float        # écart-type entre les n_repeat tirages
-    se_mean: float          # moyenne des std_error MC individuelles
-    elapsed_s: float        # temps total pour ce N
+    price_mean: float       # mean over n_repeat independent runs
+    price_std: float        # standard deviation across n_repeat runs
+    se_mean: float          # mean of individual MC std_error estimates
+    elapsed_s: float        # total wall-clock time for this N
 
 
 class ConvergenceStudy:
     """
-    Étudie la convergence en N (nombre de trajectoires) d'une méthode MC.
+    Studies Monte Carlo convergence as a function of N (number of paths).
 
     Parameters
     ----------
     mc_model : MonteCarloModel
-        Modèle déjà configuré (market, option, pricing_date, seed).
+        Pre-configured model (market, option, pricing_date, seed).
     method : str
-        Méthode à tester parmi :
-        - 'european'        → price_european_vectorized
-        - 'european_scalar' → price_european (version scalaire)
-        - 'american_ls'     → price_american_longstaff_schwartz_vectorized
+        Pricing method to test:
+        - 'european'        -> price_european_vectorized
+        - 'european_scalar' -> price_european (scalar version)
+        - 'american_ls'     -> price_american_longstaff_schwartz_vectorized
     ls_kwargs : dict
-        Kwargs supplémentaires passés à la méthode LS (num_steps, poly_basis, …)
+        Additional kwargs passed to the LS method (num_steps, poly_basis, ...)
     antithetic : bool
-        Utiliser les variables antithétiques.
+        Use antithetic variates for variance reduction.
     """
 
     def __init__(self, mc_model,
@@ -53,13 +53,13 @@ class ConvergenceStudy:
         self.results: List[ConvergencePoint] = []
 
     # ------------------------------------------------------------------
-    # Construction de l'appelant MC selon la méthode
+    # MC callable factory
     # ------------------------------------------------------------------
 
     def _make_pricer(self, n: int) -> Callable[[], dict]:
-        """Retourne un callable sans argument qui prixe avec n trajectoires."""
+        """Returns a zero-argument callable that prices with n paths."""
         mc = self.mc_model
-        # Changer temporairement le nombre de simulations
+        # Temporarily override the number of simulations
         old_n = mc.num_simulations
         mc.num_simulations = n
 
@@ -74,10 +74,10 @@ class ConvergenceStudy:
             def pricer():
                 return mc.price_american_longstaff_schwartz_vectorized(**kwargs)
         else:
-            raise ValueError(f"Méthode inconnue : '{self.method}'. "
-                             "Choisir parmi: european, european_scalar, american_ls")
+            raise ValueError(f"Unknown method: '{self.method}'. "
+                             "Choose from: european, european_scalar, american_ls")
 
-        # Wrapper qui restaure num_simulations après chaque appel
+        # Wrapper that restores num_simulations after each call
         def wrapped():
             mc.num_simulations = n
             result = pricer()
@@ -87,19 +87,19 @@ class ConvergenceStudy:
         return wrapped
 
     # ------------------------------------------------------------------
-    # Exécution de l'étude
+    # Run the study
     # ------------------------------------------------------------------
 
     def run(self, n_list: List[int], n_repeat: int = 10,
             seed_start: int = 0) -> "ConvergenceStudy":
         """
-        Lance n_repeat simulations pour chaque N dans n_list.
+        Runs n_repeat simulations for each N in n_list.
 
         Parameters
         ----------
-        n_list     : liste de nombres de trajectoires à tester
-        n_repeat   : nombre de répétitions pour estimer la variance des estimateurs
-        seed_start : premier seed (utilise seed_start, seed_start+1, …)
+        n_list     : list of path counts to test
+        n_repeat   : number of independent repetitions to estimate estimator variance
+        seed_start : first seed (uses seed_start, seed_start+1, ...)
         """
         self.results = []
         original_seed = self.mc_model.seed
@@ -125,21 +125,21 @@ class ConvergenceStudy:
                 elapsed_s  = elapsed,
             ))
 
-        self.mc_model.seed = original_seed  # restaure le seed initial
+        self.mc_model.seed = original_seed  # restore the original seed
         return self
 
     # ------------------------------------------------------------------
-    # Affichage
+    # Display
     # ------------------------------------------------------------------
 
     def print_table(self, reference: Optional[float] = None) -> None:
         """
-        Affiche un tableau de convergence.
+        Prints a convergence table.
 
-        Colonnes : N | mean_price | std_price | se_mean | bias | t(s)
+        Columns: N | mean_price | std_price | se_mean | bias | t(s)
         """
         if not self.results:
-            print("Aucun résultat — appeler run() d'abord.")
+            print("No results -- call run() first.")
             return
 
         header = f"{'N':>10}  {'mean_price':>10}  {'std_price':>10}  {'se_mean':>10}"
@@ -159,24 +159,24 @@ class ConvergenceStudy:
             print(line)
 
     # ------------------------------------------------------------------
-    # Tracé
+    # Plot
     # ------------------------------------------------------------------
 
     def plot(self, reference: Optional[float] = None,
              title: Optional[str] = None) -> None:
         """
-        Trace deux sous-graphes :
-        1. Prix moyen ± 1σ en fonction de N (avec la référence en pointillé)
-        2. std_price et se_mean vs N en échelle log/log  →  pente théorique -½
+        Plots two sub-panels:
+        1. Mean price +/- 1 sigma vs N (with optional reference dashed line)
+        2. std_price and se_mean vs N on log/log scale -- theoretical slope -1/2
         """
         try:
             import matplotlib.pyplot as plt
         except ImportError:
-            print("matplotlib non installé. Installer avec: pip install matplotlib")
+            print("matplotlib not installed. Install with: pip install matplotlib")
             return
 
         if not self.results:
-            print("Aucun résultat — appeler run() d'abord.")
+            print("No results -- call run() first.")
             return
 
         ns      = np.array([pt.n_paths    for pt in self.results])
@@ -186,31 +186,31 @@ class ConvergenceStudy:
 
         fig, axes = plt.subplots(1, 2, figsize=(13, 5))
 
-        # --- Subplot 1 : convergence du prix ---
+        # --- Subplot 1 : price convergence ---
         ax = axes[0]
-        ax.fill_between(ns, means - stds, means + stds, alpha=0.25, label='±1σ (entre répétitions)')
-        ax.plot(ns, means, 'o-', label='Prix moyen MC')
+        ax.fill_between(ns, means - stds, means + stds, alpha=0.25, label='+/-1 sigma (across runs)')
+        ax.plot(ns, means, 'o-', label='MC mean price')
         if reference is not None:
-            ax.axhline(reference, color='red', linestyle='--', label=f'Référence = {reference:.4f}')
+            ax.axhline(reference, color='red', linestyle='--', label=f'Reference = {reference:.4f}')
         ax.set_xscale('log')
-        ax.set_xlabel('N (nombre de trajectoires)')
-        ax.set_ylabel('Prix')
-        ax.set_title('Convergence du prix')
+        ax.set_xlabel('N (number of paths)')
+        ax.set_ylabel('Price')
+        ax.set_title('Price Convergence')
         ax.legend()
         ax.grid(True, which='both', alpha=0.3)
 
         # --- Subplot 2 : std vs N (log/log) ---
         ax = axes[1]
-        ax.loglog(ns, stds,    'o-', label='std (entre répétitions)')
-        ax.loglog(ns, se_mean, 's--', label='se moyen (dans chaque run)')
+        ax.loglog(ns, stds,    'o-', label='std (across runs)')
+        ax.loglog(ns, se_mean, 's--', label='mean se (within each run)')
 
-        # Pente théorique -½
+        # Theoretical slope -1/2
         c = stds[0] * ns[0] ** 0.5
-        ax.loglog(ns, c / np.sqrt(ns), 'k:', label='pente -½ (théorie)')
+        ax.loglog(ns, c / np.sqrt(ns), 'k:', label='slope -1/2 (theory)')
 
-        ax.set_xlabel('N (nombre de trajectoires)')
-        ax.set_ylabel('Erreur standard')
-        ax.set_title('Décroissance de l\'erreur standard')
+        ax.set_xlabel('N (number of paths)')
+        ax.set_ylabel('Standard error')
+        ax.set_title('Standard Error Decay')
         ax.legend()
         ax.grid(True, which='both', alpha=0.3)
 
@@ -224,11 +224,11 @@ class ConvergenceStudy:
     # ------------------------------------------------------------------
 
     def to_dataframe(self):
-        """Convertit les résultats en pandas DataFrame (si pandas disponible)."""
+        """Converts results to a pandas DataFrame (requires pandas)."""
         try:
             import pandas as pd
         except ImportError:
-            raise ImportError("pandas non installé. Installer avec: pip install pandas")
+            raise ImportError("pandas not installed. Install with: pip install pandas")
 
         rows = []
         for pt in self.results:

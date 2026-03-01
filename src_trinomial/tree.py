@@ -18,7 +18,7 @@ class Tree:
         self.pricing_date = pricing_date
         self.prunning_threshold = prunning_threshold #threshold for pruning nodes with low probability
 
-    def _place_dividende(self) -> int | None:
+    def _place_dividend(self) -> int | None:
         """Return the step where the dividend is paid, None if no dividend"""
         if self.market.div_a and self.market.div_a > 0:
             total_days = (self.option.mat_date - self.pricing_date).days
@@ -44,7 +44,7 @@ class Tree:
             node.next_mid_node.p += node.p * node.p_mid
             node.next_down_node.p += node.p * node.p_down
             if not (0 <= node.p_up <= 1 and 0 <= node.p_mid <= 1 and 0 <= node.p_down <= 1):
-                raise ValueError(f"Probabilités invalides au noeud avec underlying {node.underlying_i:.2f}: p_up={node.p_up}, p_mid={node.p_mid}, p_down={node.p_down}")
+                raise ValueError(f"Invalid probabilities at node with underlying {node.underlying_i:.2f}: p_up={node.p_up}, p_mid={node.p_mid}, p_down={node.p_down}")
 
     def _build_next_level(self, current_trunk_node: Node, div_t: float) -> None:
             """Build the next level of the tree from the current trunk node i.e up/down nodes"""
@@ -114,7 +114,7 @@ class Tree:
     def build_tree(self) -> None:
         """Build the trinomial tree with the given number of steps"""
         current_trunk_node = self.root
-        div_step = self._place_dividende()
+        div_step = self._place_dividend()
         for i in range(self.nb_step):
             div_t = self.market.div_a if div_step is not None and i == div_step else 0
             #instantiate next nodes of the current trunk node
@@ -174,14 +174,14 @@ class Tree:
     
     def plot_tree(self) -> None:
         """
-        Affiche le trinomial tree de manière interactive avec Plotly.
-        Chaque nœud montre le prix du sous-jacent et permet d'afficher les
-        probabilités de transition et la valeur de l'option au survol.
+        Displays the trinomial tree interactively using Plotly.
+        Each node shows the underlying price; hover reveals transition
+        probabilities and the option value.
         """
         def format_if_float(value, fmt=".2f"):
             return f"{value:{fmt}}" if isinstance(value, float) else str(value)
 
-        # --- collecte des noeuds niveau par niveau ---
+        # --- collect nodes level by level ---
         levels = []
         current_level = [self.root]
 
@@ -194,7 +194,7 @@ class Tree:
                         next_level.append(child)
             current_level = next_level
 
-        # --- données pour plotly ---
+        # --- plotly data ---
         xs, ys, texts, colors = [], [], [], []
         edges_x, edges_y = [], []
 
@@ -209,11 +209,11 @@ class Tree:
                 xs.append(x)
                 ys.append(y)
 
-                # couleur selon prix relatif
+                # colour relative to S0
                 rel = (node.underlying_i - S0) / (max_p - min_p)
                 colors.append(rel)
 
-                # info-bulle (tooltip)
+                # tooltip
                 texts.append(
                     f"<b>Step:</b> {i}<br>"
                     f"<b>Underlying:</b> {format_if_float(node.underlying_i, '.2f')}<br>"
@@ -224,16 +224,16 @@ class Tree:
                 )
 
 
-                # arêtes
+                # edges
                 for child in [node.next_up_node, node.next_mid_node, node.next_down_node]:
                     if child is not None:
                         edges_x += [x, i + 1, None]
                         edges_y += [y, child.underlying_i, None]
 
-        # --- création du graphe ---
+        # --- build the graph ---
         fig = go.Figure()
 
-        # arêtes (liens)
+        # edges (links)
         fig.add_trace(
             go.Scatter(
                 x=edges_x,
@@ -244,7 +244,7 @@ class Tree:
             )
         )
 
-        # nœuds
+        # nodes
         fig.add_trace(
             go.Scatter(
                 x=xs,
