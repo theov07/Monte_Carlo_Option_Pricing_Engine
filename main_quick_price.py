@@ -11,7 +11,7 @@ from src.option_trade import OptionTrade
 from src.black_scholes import BlackScholes
 from src.monte_carlo_model import MonteCarloModel
 from src.regression import BasisType
-from src.greeks import MCGreeks
+from src.greeks import MCGreeks, GreeksConfig
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  PARAMETERS
@@ -87,16 +87,24 @@ print("─" * 52)
 
 # Monte Carlo Greeks (finite difference method)
 print(f"  Computing MC Greeks ({MC_PATHS:,} paths, CRN)...")
-g_calc   = MCGreeks(
-    market=market,
-    option=option,
-    pricing_date=PRICING_DATE,
+
+g_config = GreeksConfig(
     num_paths=MC_PATHS,
     antithetic=MC_ANTITHETIC,
     seed=MC_SEED,
     num_steps=MC_STEPS,
 )
+
+g_calc = MCGreeks(
+    market=market,
+    option=option,
+    pricing_date=PRICING_DATE,
+    config=g_config,
+)
+
 greeks = g_calc.all_greeks()
+
+
 print(f"  {'Greek':<8}  {'Value':>10}   {'SE':>10}")
 print("─" * 52)
 for g in (greeks.delta, greeks.gamma, greeks.vega, greeks.theta, greeks.rho):
