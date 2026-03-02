@@ -1,4 +1,6 @@
 from datetime import date
+
+
 class OptionTrade:
     CALL_LABEL: str = 'CALL'
     PUT_LABEL: str = 'PUT'

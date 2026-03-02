@@ -10,10 +10,8 @@ instead of a plain dict or float, enabling:
 """
 from __future__ import annotations
 
-import math
 import time
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 @dataclass

@@ -1,8 +1,9 @@
-﻿from enum import Enum
+from enum import StrEnum
+
 import numpy as np
 
 
-class BasisType(str, Enum):
+class BasisType(StrEnum):
     """
     Polynomial bases available for Longstaff-Schwartz regression.
 

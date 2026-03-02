@@ -1,5 +1,6 @@
 import math
 from datetime import date
+
 from scipy.stats import norm
 
 from .market import Market

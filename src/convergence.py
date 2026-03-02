@@ -7,8 +7,8 @@ Reproduces the "Step 4" analysis:
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass, field
-from typing import List, Optional, Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -44,13 +44,13 @@ class ConvergenceStudy:
 
     def __init__(self, mc_model,
                  method: str = 'european',
-                 ls_kwargs: Optional[dict] = None,
+                 ls_kwargs: dict | None = None,
                  antithetic: bool = True):
         self.mc_model  = mc_model
         self.method    = method
         self.ls_kwargs = ls_kwargs or {}
         self.antithetic = antithetic
-        self.results: List[ConvergencePoint] = []
+        self.results: list[ConvergencePoint] = []
 
     # ------------------------------------------------------------------
     # MC callable factory
@@ -90,8 +90,8 @@ class ConvergenceStudy:
     # Run the study
     # ------------------------------------------------------------------
 
-    def run(self, n_list: List[int], n_repeat: int = 10,
-            seed_start: int = 0) -> "ConvergenceStudy":
+    def run(self, n_list: list[int], n_repeat: int = 10,
+            seed_start: int = 0) -> ConvergenceStudy:
         """
         Runs n_repeat simulations for each N in n_list.
 
@@ -132,7 +132,7 @@ class ConvergenceStudy:
     # Display
     # ------------------------------------------------------------------
 
-    def print_table(self, reference: Optional[float] = None) -> None:
+    def print_table(self, reference: float | None = None) -> None:
         """
         Prints a convergence table.
 
@@ -162,8 +162,8 @@ class ConvergenceStudy:
     # Plot
     # ------------------------------------------------------------------
 
-    def plot(self, reference: Optional[float] = None,
-             title: Optional[str] = None) -> None:
+    def plot(self, reference: float | None = None,
+             title: str | None = None) -> None:
         """
         Plots two sub-panels:
         1. Mean price +/- 1 sigma vs N (with optional reference dashed line)
@@ -227,8 +227,8 @@ class ConvergenceStudy:
         """Converts results to a pandas DataFrame (requires pandas)."""
         try:
             import pandas as pd
-        except ImportError:
-            raise ImportError("pandas not installed. Install with: pip install pandas")
+        except ImportError as err:
+            raise ImportError("pandas not installed. Install with: pip install pandas") from err
 
         rows = []
         for pt in self.results:

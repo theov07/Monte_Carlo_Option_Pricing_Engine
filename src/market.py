@@ -1,4 +1,6 @@
 from datetime import date
+
+
 class Market:
     def __init__(self, underlying: float, vol: float, rate: float, div_a: float, ex_div_date: date) -> None:
         """Market parameters for option pricing"""

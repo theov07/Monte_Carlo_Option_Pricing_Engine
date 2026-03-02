@@ -1,10 +1,11 @@
-import time
-import numpy as np
 from datetime import date
+
+import numpy as np
+
+from .brownian_motion import BrownianMotion
 from .market import Market
 from .option_trade import OptionTrade
-from .brownian_motion import BrownianMotion
-from .regression import Regression, BasisType
+from .regression import BasisType, Regression
 
 
 class MonteCarloModel:
@@ -153,10 +154,8 @@ class MonteCarloModel:
             S_T, S_T_anti = bm.generate_terminal_prices(S0, r, sigma, q)
 
         payoffs = self._payoff_vec(S_T) * df
-        if antithetic:
-            final_payoffs = (payoffs + self._payoff_vec(S_T_anti) * df) / 2
-        else:
-            final_payoffs = payoffs
+        
+        final_payoffs = (payoffs + self._payoff_vec(S_T_anti) * df) / 2 if antithetic else payoffs
 
         price = np.mean(final_payoffs)
         std_error = np.std(final_payoffs, ddof=1) / np.sqrt(len(final_payoffs))
