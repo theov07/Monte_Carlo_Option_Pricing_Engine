@@ -1,9 +1,11 @@
-from .tree import Tree
-from .option_trade import OptionTrade
+from datetime import date
+
+import numpy as np
+
 from .market import Market
 from .node import Node
-from datetime import date
-import numpy as np  
+from .option_trade import OptionTrade
+from .tree import Tree
 
 
 class TrinomialModel:

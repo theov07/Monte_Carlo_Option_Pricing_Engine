@@ -2,9 +2,10 @@ from datetime import date
 
 import numpy as np
 
-from src.models.brownian_motion import BrownianMotion
 from src.instruments.market import Market
 from src.instruments.option_trade import OptionTrade
+from src.models.brownian_motion import BrownianMotion
+
 from .regression import BasisType, Regression
 
 

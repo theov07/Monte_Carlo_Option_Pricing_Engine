@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class BrownianMotion:
     """
     Generates Brownian motions for Monte Carlo simulation.

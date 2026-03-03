@@ -1,5 +1,6 @@
 from .option_trade import OptionTrade
 
+
 class Node:
     def __init__(self, underlying_i: float) -> None:
         """A node in the trinomial tree"""

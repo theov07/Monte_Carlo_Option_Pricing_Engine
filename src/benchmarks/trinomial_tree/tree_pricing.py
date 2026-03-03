@@ -1,11 +1,11 @@
-import time 
+import time
 from datetime import date
 
+from .market import Market
+from .option_trade import OptionTrade
 from .tree import Tree
 from .trinomial_model import TrinomialModel
 
-from .option_trade import OptionTrade
-from .market import Market
 
 def tree_pricing(market: Market, option: OptionTrade, pricing_date: date, n_steps: int = 500):
     pruning_threshold = 1e-8

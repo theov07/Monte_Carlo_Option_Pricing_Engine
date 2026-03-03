@@ -1,9 +1,12 @@
-from .option_trade import OptionTrade
+from datetime import date
+
+import numpy as np
+import plotly.graph_objects as go  # for visualization
+
 from .market import Market
 from .node import Node
-from datetime import date
-import numpy as np  
-import plotly.graph_objects as go # for visualization
+from .option_trade import OptionTrade
+
 
 class Tree:
     def __init__(self, nb_step: int, market: Market, option: OptionTrade, pricing_date: date, prunning_threshold: float = 1e-8) -> None:

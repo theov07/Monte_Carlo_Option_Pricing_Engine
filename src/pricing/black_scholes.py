@@ -1,6 +1,8 @@
 import math
 from datetime import date
+
 from scipy.stats import norm
+
 from src.instruments.market import Market
 from src.instruments.option_trade import OptionTrade
 
