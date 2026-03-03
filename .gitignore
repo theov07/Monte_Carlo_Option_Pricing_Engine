@@ -15,3 +15,8 @@ env/
 
 # Logs
 *.log
+
+
+checkstyle.py
+pyproject.toml
+.ruff_cache
