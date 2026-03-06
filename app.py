@@ -179,16 +179,10 @@ st.markdown(
 # Matplotlib dark style helper
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _apply_dark_style(fig: plt.Figure, ax=None):
+def _apply_dark_style(fig: plt.Figure):
     """Apply consistent dark theme to a matplotlib figure."""
     fig.patch.set_facecolor(NAVY)
-    if ax is None:
-        axes = fig.get_axes()
-    elif hasattr(ax, "__iter__") and not isinstance(ax, plt.Axes):
-        axes = list(np.asarray(ax).flat)
-    else:
-        axes = [ax]
-    for a in axes:
+    for a in fig.get_axes():
         a.set_facecolor(NAVY2)
         a.tick_params(colors=GREY)
         a.xaxis.label.set_color(WHITE)
@@ -538,7 +532,7 @@ with tab_price:
         ax.set_ylabel("Payoff")
         ax.set_title(f"{cp} {ex} – K={K:.0f}, T={T_months}M")
         ax.legend()
-        _apply_dark_style(fig, ax)
+        _apply_dark_style(fig)
         st.pyplot(fig, use_container_width=True)
         plt.close(fig)
     else:
@@ -582,7 +576,7 @@ with tab_paths:
     ax2.set_title("Terminal spot distribution")
     ax2.legend()
 
-    _apply_dark_style(fig, axes)
+    _apply_dark_style(fig)
     st.pyplot(fig, use_container_width=True)
     plt.close(fig)
 
@@ -664,7 +658,7 @@ with tab_greeks:
         ax.axhline(0, color=GREY, linewidth=0.8, linestyle="--")
         ax.set_ylabel("Value")
         ax.set_title(f"Greeks — {cp} {ex}  S₀={S0:.0f}  K={K:.0f}  σ={sigma:.0%}  T={T_months}M")
-        _apply_dark_style(fig, ax)
+        _apply_dark_style(fig)
         st.pyplot(fig, use_container_width=True)
         plt.close(fig)
 
@@ -768,7 +762,7 @@ with tab_conv:
         ax2.set_title("Standard error vs N")
         ax2.legend()
 
-        _apply_dark_style(fig, axes)
+        _apply_dark_style(fig)
         st.pyplot(fig, use_container_width=True)
         plt.close(fig)
 
@@ -823,7 +817,7 @@ with tab_smile:
         ax.set_ylabel("Option price")
         ax.set_title(f"{cp} {ex} price profile — S₀={S0:.0f}  T={T_months}M  σ=20%  r={r:.1%}")
         ax.legend()
-        _apply_dark_style(fig, ax)
+        _apply_dark_style(fig)
         st.pyplot(fig, use_container_width=True)
         plt.close(fig)
     else:
