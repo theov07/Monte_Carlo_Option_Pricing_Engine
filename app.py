@@ -182,7 +182,12 @@ st.markdown(
 def _apply_dark_style(fig: plt.Figure, ax=None):
     """Apply consistent dark theme to a matplotlib figure."""
     fig.patch.set_facecolor(NAVY)
-    axes = [ax] if ax is not None else fig.get_axes()
+    if ax is None:
+        axes = fig.get_axes()
+    elif hasattr(ax, "__iter__") and not isinstance(ax, plt.Axes):
+        axes = list(np.asarray(ax).flat)
+    else:
+        axes = [ax]
     for a in axes:
         a.set_facecolor(NAVY2)
         a.tick_params(colors=GREY)
