@@ -146,7 +146,7 @@ requirements.txt
 ```bash
 # Clone the repository
 git clone https://github.com/theov07/Monte_Carlo_Option_Pricing_Engine.git
-cd Monte-Carlo-Option-Pricing
+cd Monte_Carlo_Option_Pricing_Engine
 
 # Create and activate virtual environment (recommended)
 python3 -m venv .venv
